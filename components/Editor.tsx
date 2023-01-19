@@ -5,6 +5,7 @@ import {
   $getRoot,
   $getSelection,
   EditorState,
+  ParagraphNode,
 } from "lexical";
 import { useEffect } from "react";
 
@@ -19,6 +20,7 @@ import { $createLinkNode, LinkNode } from "@lexical/link";
 import { TweetNode, $createTweetNode } from "./TweetNode";
 import { $createPetyoNode, PetyoNode } from "./PetyoNode";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import ToolbarDemo from "./Toolbar";
 
 // Get editor initial state (e.g. loaded from backend)
 const loadContent = () => {
@@ -30,11 +32,14 @@ const loadContent = () => {
 
   // Create a new ParagraphNode
   let paragraphNode = $createParagraphNode();
-  let textNode = $createTextNode("Hello world");
+  let textNode = $createTextNode("Hello world ");
   let linkNode = $createLinkNode("https://lexical.dev");
-  linkNode.append($createTextNode("Lexical"));
+  linkNode.append($createTextNode("A link to lexical"));
   paragraphNode.append(textNode, linkNode);
-  paragraphNode.append($createLineBreakNode());
+  paragraphNode.append(
+    $createLineBreakNode(),
+    $createTextNode("different").toggleFormat("underline")
+  );
   root.append(paragraphNode);
 
   paragraphNode = $createParagraphNode();
@@ -44,11 +49,20 @@ const loadContent = () => {
 
   // const tweetNode = $createTweetNode("1613060550790889475");
   // root.append(tweetNode);
-  root.append($createPetyoNode());
+  // root.append($createPetyoNode());
 };
 
 const theme = {
-  // Theme styling goes here
+  text: {
+    bold: "PlaygroundEditorTheme__textBold",
+    code: "PlaygroundEditorTheme__textCode",
+    italic: "PlaygroundEditorTheme__textItalic",
+    strikethrough: "PlaygroundEditorTheme__textStrikethrough",
+    subscript: "PlaygroundEditorTheme__textSubscript",
+    superscript: "PlaygroundEditorTheme__textSuperscript",
+    underline: "PlaygroundEditorTheme__textUnderline",
+    underlineStrikethrough: "PlaygroundEditorTheme__textUnderlineStrikethrough",
+  },
 };
 
 // When the editor changes, you can get notified via the
@@ -76,8 +90,7 @@ function LogStateButton() {
       onClick={() => {
         editor.update(() => {
           const root = $getRoot();
-          debugger;
-          console.log($getRoot().getTextContent());
+          console.log($getRoot().exportJSON());
         });
       }}
     >
@@ -93,14 +106,19 @@ export function Editor() {
     },
     namespace: "MyEditor",
     theme,
-    nodes: [LinkNode, TweetNode, PetyoNode],
+    nodes: [ParagraphNode, LinkNode, TweetNode, PetyoNode],
     onError,
   };
 
   return (
     <LexicalComposer initialConfig={initialConfig}>
       <RichTextPlugin
-        contentEditable={<ContentEditable />}
+        contentEditable={
+          <>
+            <ToolbarDemo />
+            <ContentEditable />
+          </>
+        }
         placeholder={<div></div>}
         ErrorBoundary={LexicalErrorBoundary}
       />

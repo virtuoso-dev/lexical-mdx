@@ -1,4 +1,22 @@
-html,
 body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji",
+    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   color: #333;
+}
+
+.PlaygroundEditorTheme__textBold {
+  font-weight: bold;
+}
+.PlaygroundEditorTheme__textItalic {
+  font-style: italic;
+}
+.PlaygroundEditorTheme__textUnderline {
+  text-decoration: underline;
+}
+.PlaygroundEditorTheme__textStrikethrough {
+  text-decoration: line-through;
+}
+.PlaygroundEditorTheme__textUnderlineStrikethrough {
+  text-decoration: underline line-through;
 }
