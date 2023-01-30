@@ -1,3 +1,6 @@
+/**
+ * @typedef {import('mdast-util-mdx')}
+ */
 import {
   $createLineBreakNode,
   $createParagraphNode,
@@ -5,7 +8,9 @@ import {
   $getRoot,
   $getSelection,
   EditorState,
+  ElementNode,
   ParagraphNode,
+  TextNode,
 } from "lexical";
 import { useEffect } from "react";
 
@@ -19,14 +24,67 @@ import LexicalErrorBoundary from "@lexical/react/LexicalErrorBoundary";
 import { $createLinkNode, LinkNode } from "@lexical/link";
 import { TweetNode, $createTweetNode } from "./TweetNode";
 import { $createPetyoNode, PetyoNode } from "./PetyoNode";
+import {
+  $createStrongNode,
+  StrongNode,
+  $createEmphasisNode,
+  EmphasisNode,
+  $createUnderlineNode,
+  UnderlineNode,
+} from "./FormatNode";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import ToolbarDemo from "./Toolbar";
+import { fromMarkdown } from "mdast-util-from-markdown";
+import { mdxjs } from "micromark-extension-mdxjs";
+import { mdxFromMarkdown } from "mdast-util-mdx";
+import { visit } from "unist-util-visit";
 
-// Get editor initial state (e.g. loaded from backend)
+const markdown = `
+Hello 
+
+World *italic*
+
+  Some **nested *formatting* text some more <u>un *derl* ine</u>**.
+`;
+
 const loadContent = () => {
-  // Get the RootNode from the EditorState
-  const root = $getRoot();
+  const tree = fromMarkdown(markdown, {
+    extensions: [mdxjs()],
+    mdastExtensions: [mdxFromMarkdown()],
+  });
 
+  const parentMap = new WeakMap<Object, ElementNode | TextNode>();
+  const root = $getRoot();
+  parentMap.set(tree, root);
+
+  console.log(tree);
+
+  visit(tree, (node, _index, parent) => {
+    let lexicalNode: ElementNode | TextNode;
+    if (node.type === "root") {
+      return;
+    } else if (node.type === "paragraph") {
+      lexicalNode = $createParagraphNode();
+    } else if (node.type === "text") {
+      lexicalNode = $createTextNode(node.value);
+    } else if (node.type === "emphasis") {
+      lexicalNode = $createEmphasisNode();
+    } else if (node.type === "strong") {
+      lexicalNode = $createStrongNode();
+    } else if (node.type === "mdxJsxTextElement" && node.name === "u") {
+      lexicalNode = $createUnderlineNode();
+    } else {
+      throw new Error(`Unknown node type ${node.type}`);
+    }
+
+    const lexicalParent = parentMap.get(parent!)!;
+    lexicalParent.append(lexicalNode);
+    parentMap.set(node, lexicalNode);
+  });
+
+  // Get the RootNode from the EditorState
+
+  /*
   // Get the selection from the EditorState
   const selection = $getSelection();
 
@@ -46,6 +104,7 @@ const loadContent = () => {
   textNode = $createTextNode("Second line");
   paragraphNode.append(textNode);
   root.append(paragraphNode);
+  */
 
   // const tweetNode = $createTweetNode("1613060550790889475");
   // root.append(tweetNode);
@@ -106,7 +165,15 @@ export function Editor() {
     },
     namespace: "MyEditor",
     theme,
-    nodes: [ParagraphNode, LinkNode, TweetNode, PetyoNode],
+    nodes: [
+      ParagraphNode,
+      LinkNode,
+      TweetNode,
+      PetyoNode,
+      EmphasisNode,
+      StrongNode,
+      UnderlineNode,
+    ],
     onError,
   };
 
