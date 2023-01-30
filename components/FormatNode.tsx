@@ -19,8 +19,13 @@ export type SerializedFormatNode<T extends FormatType> = Spread<
   SerializedElementNode
 >;
 
+type FormatNodeThis = {
+  new (key?: string): FormatNode;
+  formatTagName: FormatTagName;
+};
+
 /** @noInheritDoc */
-class FormatNode extends ElementNode {
+abstract class FormatNode extends ElementNode {
   static get formatType(): FormatType {
     throw new Error("formatType must be implemented");
   }
@@ -33,28 +38,28 @@ class FormatNode extends ElementNode {
     return this.formatType;
   }
 
-  static clone(node: FormatNode): FormatNode {
+  static clone(this: FormatNodeThis, node: FormatNode): FormatNode {
     return new this(node.__key);
   }
 
-  createDOM(config: EditorConfig): HTMLElement {
+  createDOM(_config: EditorConfig): HTMLElement {
     return document.createElement(
       (this.constructor as unknown as FormatNode).formatTagName
     );
   }
 
   updateDOM(
-    prevNode: FormatNode,
-    dom: HTMLElement,
-    config: EditorConfig
+    _prevNode: FormatNode,
+    _dom: HTMLElement,
+    _config: EditorConfig
   ): boolean {
     return false;
   }
 
-  static importDOM(): DOMConversionMap | null {
+  static importDOM(this: FormatNodeThis): DOMConversionMap | null {
     return {
       [this.formatTagName]: () => ({
-        conversion: (dom: HTMLElement) => {
+        conversion: (_dom: HTMLElement) => {
           return {
             node: $applyNodeReplacement(new this()),
           };
