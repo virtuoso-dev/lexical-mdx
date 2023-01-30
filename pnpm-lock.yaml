@@ -2,7 +2,10 @@ lockfileVersion: 5.4
 
 specifiers:
   '@lexical/clipboard': ^0.7.6
+  '@lexical/code': ^0.7.6
   '@lexical/link': ^0.7.6
+  '@lexical/list': ^0.7.6
+  '@lexical/markdown': ^0.7.6
   '@lexical/react': ^0.7.6
   '@lexical/rich-text': ^0.7.6
   '@lexical/selection': ^0.7.6
@@ -28,7 +31,10 @@ specifiers:
 
 dependencies:
   '@lexical/clipboard': 0.7.6_lexical@0.7.6
+  '@lexical/code': 0.7.6_lexical@0.7.6
   '@lexical/link': 0.7.6_lexical@0.7.6
+  '@lexical/list': 0.7.6_lexical@0.7.6
+  '@lexical/markdown': 0.7.6_ud6s6ysqwlidvzn5p46ia5ckhe
   '@lexical/react': 0.7.6_urbbhijj4bjds7dyo6fbmwct4u
   '@lexical/rich-text': 0.7.6_eioik75cyzoruwd4hvum3yfzge
   '@lexical/selection': 0.7.6_lexical@0.7.6

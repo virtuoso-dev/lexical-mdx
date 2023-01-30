@@ -14,6 +14,11 @@ import {
 } from "lexical";
 import { useEffect } from "react";
 
+const IS_BOLD = 1;
+const IS_ITALIC = 1 << 1;
+// const IS_STRIKETHROUGH = 1 << 2;
+const IS_UNDERLINE = 1 << 3;
+
 import { LexicalComposer } from "@lexical/react/LexicalComposer";
 import { LinkPlugin as LexicalLinkPlugin } from "@lexical/react/LexicalLinkPlugin";
 import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
@@ -21,29 +26,25 @@ import { ContentEditable } from "@lexical/react/LexicalContentEditable";
 import { HistoryPlugin } from "@lexical/react/LexicalHistoryPlugin";
 import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
 import LexicalErrorBoundary from "@lexical/react/LexicalErrorBoundary";
-import { $createLinkNode, LinkNode } from "@lexical/link";
-import { TweetNode, $createTweetNode } from "./TweetNode";
-import { $createPetyoNode, PetyoNode } from "./PetyoNode";
-import {
-  $createStrongNode,
-  StrongNode,
-  $createEmphasisNode,
-  EmphasisNode,
-  $createUnderlineNode,
-  UnderlineNode,
-} from "./FormatNode";
+// import { TweetNode, $createTweetNode } from "./TweetNode";
+// import { $createPetyoNode, PetyoNode } from "./PetyoNode";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import ToolbarDemo from "./Toolbar";
 import { fromMarkdown } from "mdast-util-from-markdown";
 import { mdxjs } from "micromark-extension-mdxjs";
 import { mdxFromMarkdown } from "mdast-util-mdx";
 import { visit } from "unist-util-visit";
+import { TRANSFORMERS } from "@lexical/markdown";
+import { MarkdownShortcutPlugin } from "@lexical/react/LexicalMarkdownShortcutPlugin";
+import { HeadingNode, QuoteNode } from "@lexical/rich-text";
+import { CodeNode } from "@lexical/code";
+import { $createLinkNode, LinkNode } from "@lexical/link";
+import { ListNode, ListItemNode } from "@lexical/list";
 
 const markdown = `
 Hello 
 
-World *italic*
-
+World 
   Some **nested *formatting* text some more <u>un *derl* ine</u>**.
 `;
 
@@ -54,10 +55,10 @@ const loadContent = () => {
   });
 
   const parentMap = new WeakMap<Object, ElementNode | TextNode>();
+  const formattingMap = new WeakMap<Object, number>();
   const root = $getRoot();
   parentMap.set(tree, root);
-
-  console.log(tree);
+  // console.log(tree);
 
   visit(tree, (node, _index, parent) => {
     let lexicalNode: ElementNode | TextNode;
@@ -65,21 +66,26 @@ const loadContent = () => {
       return;
     } else if (node.type === "paragraph") {
       lexicalNode = $createParagraphNode();
+      parentMap.set(node, lexicalNode);
+      const lexicalParent = parentMap.get(parent!)!;
+      lexicalParent.append(lexicalNode);
     } else if (node.type === "text") {
       lexicalNode = $createTextNode(node.value);
+      const lexicalParent = parentMap.get(parent!)!;
+      lexicalNode.setFormat(formattingMap.get(parent!)!);
+      lexicalParent.append(lexicalNode);
     } else if (node.type === "emphasis") {
-      lexicalNode = $createEmphasisNode();
+      formattingMap.set(node, IS_ITALIC | (formattingMap.get(parent!) ?? 0));
+      parentMap.set(node, parentMap.get(parent!)!);
     } else if (node.type === "strong") {
-      lexicalNode = $createStrongNode();
+      formattingMap.set(node, IS_BOLD | (formattingMap.get(parent!) ?? 0));
+      parentMap.set(node, parentMap.get(parent!)!);
     } else if (node.type === "mdxJsxTextElement" && node.name === "u") {
-      lexicalNode = $createUnderlineNode();
+      formattingMap.set(node, IS_UNDERLINE | (formattingMap.get(parent!) ?? 0));
+      parentMap.set(node, parentMap.get(parent!)!);
     } else {
       throw new Error(`Unknown node type ${node.type}`);
     }
-
-    const lexicalParent = parentMap.get(parent!)!;
-    lexicalParent.append(lexicalNode);
-    parentMap.set(node, lexicalNode);
   });
 
   // Get the RootNode from the EditorState
@@ -168,11 +174,11 @@ export function Editor() {
     nodes: [
       ParagraphNode,
       LinkNode,
-      TweetNode,
-      PetyoNode,
-      EmphasisNode,
-      StrongNode,
-      UnderlineNode,
+      HeadingNode,
+      QuoteNode,
+      CodeNode,
+      ListNode,
+      ListItemNode,
     ],
     onError,
   };
@@ -190,6 +196,7 @@ export function Editor() {
         ErrorBoundary={LexicalErrorBoundary}
       />
       <LexicalLinkPlugin />
+      <MarkdownShortcutPlugin transformers={TRANSFORMERS} />
       <OnChangePlugin onChange={onChange} />
       <HistoryPlugin />
       <LogStateButton />

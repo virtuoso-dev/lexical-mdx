@@ -69,15 +69,14 @@ abstract class FormatNode extends ElementNode {
     };
   }
 
-  static importJSON(): FormatNode {
-    const node = $createStrongNode();
-    return node;
+  static importJSON(this: FormatNodeThis): FormatNode {
+    return $applyNodeReplacement(new this());
   }
 
   exportJSON(): SerializedElementNode {
     return {
       ...super.exportJSON(),
-      type: "strong",
+      type: (this.constructor as unknown as FormatNode).formatType,
       version: 1,
     };
   }

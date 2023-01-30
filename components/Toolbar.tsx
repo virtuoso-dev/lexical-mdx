@@ -61,6 +61,7 @@ const ToolbarDemo = () => {
 
       let newFormat = format;
 
+      console.log(selection);
       if (selection.hasFormat("bold")) {
         newFormat |= BOLD;
       } else {
@@ -160,45 +161,6 @@ const ToolbarDemo = () => {
         </Toolbar.ToggleItem>
       </Toolbar.ToggleGroup>
       <Toolbar.Separator className="ToolbarSeparator" />
-      <Toolbar.ToggleGroup
-        type="single"
-        defaultValue="center"
-        aria-label="Text alignment"
-      >
-        <Toolbar.ToggleItem
-          className="ToolbarToggleItem"
-          value="left"
-          aria-label="Left aligned"
-        >
-          <TextAlignLeftIcon />
-        </Toolbar.ToggleItem>
-        <Toolbar.ToggleItem
-          className="ToolbarToggleItem"
-          value="center"
-          aria-label="Center aligned"
-        >
-          <TextAlignCenterIcon />
-        </Toolbar.ToggleItem>
-        <Toolbar.ToggleItem
-          className="ToolbarToggleItem"
-          value="right"
-          aria-label="Right aligned"
-        >
-          <TextAlignRightIcon />
-        </Toolbar.ToggleItem>
-      </Toolbar.ToggleGroup>
-      <Toolbar.Separator className="ToolbarSeparator" />
-      <Toolbar.Link
-        className="ToolbarLink"
-        href="#"
-        target="_blank"
-        style={{ marginRight: 10 }}
-      >
-        Edited 2 hours ago
-      </Toolbar.Link>
-      <Toolbar.Button className="ToolbarButton" style={{ marginLeft: "auto" }}>
-        Share
-      </Toolbar.Button>
     </Toolbar.Root>
   );
 };
