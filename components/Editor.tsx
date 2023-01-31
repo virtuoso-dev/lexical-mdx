@@ -11,6 +11,9 @@ import {
   ElementNode,
   ParagraphNode,
   TextNode,
+  SerializedLexicalNode,
+  SerializedParagraphNode,
+  SerializedTextNode,
 } from "lexical";
 import { useEffect } from "react";
 
@@ -32,7 +35,7 @@ import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext
 import ToolbarDemo from "./Toolbar";
 import { fromMarkdown } from "mdast-util-from-markdown";
 import { mdxjs } from "micromark-extension-mdxjs";
-import { mdxFromMarkdown } from "mdast-util-mdx";
+import { mdxFromMarkdown, mdxToMarkdown } from "mdast-util-mdx";
 import { visit } from "unist-util-visit";
 import { TRANSFORMERS } from "@lexical/markdown";
 import { MarkdownShortcutPlugin } from "@lexical/react/LexicalMarkdownShortcutPlugin";
@@ -40,12 +43,24 @@ import { HeadingNode, QuoteNode } from "@lexical/rich-text";
 import { CodeNode } from "@lexical/code";
 import { $createLinkNode, LinkNode } from "@lexical/link";
 import { ListNode, ListItemNode } from "@lexical/list";
+import {
+  ParentMdxNode,
+  ParentNode,
+  RootMdxNode,
+  ParagraphMdxNode,
+  TextMdxNode,
+  UnderlineMdxNode,
+  StrongMdxNode,
+  EmphasisMdxNode,
+} from "./MdxNodes";
+import { toMarkdown } from "mdast-util-to-markdown";
 
 const markdown = `
 Hello 
 
-World 
-  Some **nested *formatting* text some more <u>un *derl* ine</u>**.
+World Some **nested *formatting* text some more <u>un *derl* ine</u>**.
+
+And *some italic with nested **bold** text*.
 `;
 
 const loadContent = () => {
@@ -58,7 +73,7 @@ const loadContent = () => {
   const formattingMap = new WeakMap<Object, number>();
   const root = $getRoot();
   parentMap.set(tree, root);
-  // console.log(tree);
+  console.log(tree);
 
   visit(tree, (node, _index, parent) => {
     let lexicalNode: ElementNode | TextNode;
@@ -136,6 +151,7 @@ function onChange(editorState: EditorState) {
   editorState.read(() => {
     // Read the contents of the EditorState here.
     const root = $getRoot();
+    console.log($getRoot().exportJSON());
     const selection = $getSelection();
     console.log(root.getTextContent());
   });
@@ -148,18 +164,97 @@ function onError(error: Error) {
   console.error(error);
 }
 
+function isLexicalSerializedTextNode(
+  node: SerializedLexicalNode
+): node is SerializedTextNode {
+  return node.type === "text";
+}
+
+function convertLexicalStateToMarkdown(state: EditorState) {
+  const rootMdxNode = new RootMdxNode();
+  function visitNode(
+    parentMdxNode: ParentMdxNode<any>,
+    lexicalChildren: Array<SerializedLexicalNode>
+  ) {
+    lexicalChildren.forEach((lexicalChild, index) => {
+      if (lexicalChild.type === "paragraph") {
+        visitNode(
+          parentMdxNode.append(new ParagraphMdxNode()),
+          (lexicalChild as SerializedParagraphNode).children
+        );
+      } else if (isLexicalSerializedTextNode(lexicalChild)) {
+        const previousSibling = lexicalChildren[index - 1];
+
+        //@ts-ignore
+        const prevFormat = previousSibling?.format ?? 0;
+        const format = lexicalChild.format ?? 0;
+
+        let localParentMdxNode = parentMdxNode;
+
+        if (prevFormat & format & IS_ITALIC) {
+          localParentMdxNode = localParentMdxNode.append(new EmphasisMdxNode());
+        }
+
+        if (prevFormat & format & IS_BOLD) {
+          console.log("continue bold");
+          localParentMdxNode = localParentMdxNode.append(new StrongMdxNode());
+        }
+
+        if (prevFormat & format & IS_UNDERLINE) {
+          localParentMdxNode = localParentMdxNode.append(
+            new UnderlineMdxNode()
+          );
+        }
+
+        if (format & IS_ITALIC && !(prevFormat & IS_ITALIC)) {
+          localParentMdxNode = localParentMdxNode.append(new EmphasisMdxNode());
+        }
+
+        if (format & IS_BOLD && !(prevFormat & IS_BOLD)) {
+          localParentMdxNode = localParentMdxNode.append(new StrongMdxNode());
+        }
+
+        if (format & IS_UNDERLINE && !(prevFormat & IS_UNDERLINE)) {
+          localParentMdxNode = localParentMdxNode.append(
+            new UnderlineMdxNode()
+          );
+        }
+
+        localParentMdxNode.append(new TextMdxNode(lexicalChild.text));
+      } else {
+        throw new Error(`Unknown node type ${lexicalChild.type}`);
+      }
+    });
+  }
+
+  visitNode(rootMdxNode, state.toJSON().root.children);
+
+  const resultMarkdown = toMarkdown(rootMdxNode.toTree(), {
+    extensions: [mdxToMarkdown()],
+  });
+  console.log(resultMarkdown);
+  console.log(markdown);
+}
+
 function LogStateButton() {
   const [editor] = useLexicalComposerContext();
   return (
     <button
       onClick={() => {
-        editor.update(() => {
+        convertLexicalStateToMarkdown(editor.getEditorState());
+        // console.log(editor.getEditorState().toJSON());
+
+        /*
+        editor.getEditorState().read(() => {
           const root = $getRoot();
-          console.log($getRoot().exportJSON());
+          console.log(root);
+          console.log(root.getTextContent());
+          console.log(root.exportJSON());
         });
+        */
       }}
     >
-      Click here
+      Log State
     </button>
   );
 }
