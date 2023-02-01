@@ -11,11 +11,11 @@ import {
   ElementNode,
   ParagraphNode,
   TextNode,
-  SerializedLexicalNode,
-  SerializedParagraphNode,
-  SerializedTextNode,
+  LexicalNode,
+  $isParagraphNode,
+  $isTextNode,
 } from "lexical";
-import { useEffect } from "react";
+import { useEffect, useRef, useCallback } from "react";
 
 const IS_BOLD = 1;
 const IS_ITALIC = 1 << 1;
@@ -39,97 +39,89 @@ import { mdxFromMarkdown, mdxToMarkdown } from "mdast-util-mdx";
 import { visit } from "unist-util-visit";
 import { TRANSFORMERS } from "@lexical/markdown";
 import { MarkdownShortcutPlugin } from "@lexical/react/LexicalMarkdownShortcutPlugin";
-import { HeadingNode, QuoteNode } from "@lexical/rich-text";
+import {
+  HeadingNode,
+  QuoteNode,
+  $createQuoteNode,
+  $isQuoteNode,
+} from "@lexical/rich-text";
 import { CodeNode } from "@lexical/code";
-import { $createLinkNode, LinkNode } from "@lexical/link";
+import { LinkNode } from "@lexical/link";
 import { ListNode, ListItemNode } from "@lexical/list";
 import {
   ParentMdxNode,
-  ParentNode,
   RootMdxNode,
   ParagraphMdxNode,
   TextMdxNode,
   UnderlineMdxNode,
   StrongMdxNode,
   EmphasisMdxNode,
+  BlockquoteMdxNode,
 } from "./MdxNodes";
 import { toMarkdown } from "mdast-util-to-markdown";
 
-const markdown = `
+const initialMarkdown = `
 Hello 
 
 World Some **nested *formatting* text some more <u>un *derl* ine</u>**.
 
 And *some italic with nested **bold** text*.
+
+> Quote with **bold** and *italic* text.
+> and some more.
+
+And some paragraph.
 `;
 
 const loadContent = () => {
-  const tree = fromMarkdown(markdown, {
+  const tree = fromMarkdown(initialMarkdown, {
     extensions: [mdxjs()],
     mdastExtensions: [mdxFromMarkdown()],
   });
+
+  console.log(tree);
 
   const parentMap = new WeakMap<Object, ElementNode | TextNode>();
   const formattingMap = new WeakMap<Object, number>();
   const root = $getRoot();
   parentMap.set(tree, root);
-  console.log(tree);
 
   visit(tree, (node, _index, parent) => {
     let lexicalNode: ElementNode | TextNode;
+    const lexicalParent = parentMap.get(parent!)!;
     if (node.type === "root") {
       return;
     } else if (node.type === "paragraph") {
-      lexicalNode = $createParagraphNode();
+      // if lexical parent is a blockquote, skip paragraphs.
+      // Otherwise, the user will get stuck when hitting enter in the blockquote.
+      if ($isQuoteNode(lexicalParent)) {
+        parentMap.set(node, lexicalParent);
+      } else {
+        lexicalNode = $createParagraphNode();
+        parentMap.set(node, lexicalNode);
+        lexicalParent.append(lexicalNode);
+      }
+    } else if (node.type === "blockquote") {
+      lexicalNode = $createQuoteNode();
       parentMap.set(node, lexicalNode);
-      const lexicalParent = parentMap.get(parent!)!;
       lexicalParent.append(lexicalNode);
     } else if (node.type === "text") {
       lexicalNode = $createTextNode(node.value);
-      const lexicalParent = parentMap.get(parent!)!;
       lexicalNode.setFormat(formattingMap.get(parent!)!);
       lexicalParent.append(lexicalNode);
     } else if (node.type === "emphasis") {
       formattingMap.set(node, IS_ITALIC | (formattingMap.get(parent!) ?? 0));
-      parentMap.set(node, parentMap.get(parent!)!);
+      parentMap.set(node, lexicalParent);
     } else if (node.type === "strong") {
       formattingMap.set(node, IS_BOLD | (formattingMap.get(parent!) ?? 0));
-      parentMap.set(node, parentMap.get(parent!)!);
+      parentMap.set(node, lexicalParent);
     } else if (node.type === "mdxJsxTextElement" && node.name === "u") {
       formattingMap.set(node, IS_UNDERLINE | (formattingMap.get(parent!) ?? 0));
-      parentMap.set(node, parentMap.get(parent!)!);
+      parentMap.set(node, lexicalParent);
     } else {
       throw new Error(`Unknown node type ${node.type}`);
     }
   });
-
-  // Get the RootNode from the EditorState
-
-  /*
-  // Get the selection from the EditorState
-  const selection = $getSelection();
-
-  // Create a new ParagraphNode
-  let paragraphNode = $createParagraphNode();
-  let textNode = $createTextNode("Hello world ");
-  let linkNode = $createLinkNode("https://lexical.dev");
-  linkNode.append($createTextNode("A link to lexical"));
-  paragraphNode.append(textNode, linkNode);
-  paragraphNode.append(
-    $createLineBreakNode(),
-    $createTextNode("different").toggleFormat("underline")
-  );
-  root.append(paragraphNode);
-
-  paragraphNode = $createParagraphNode();
-  textNode = $createTextNode("Second line");
-  paragraphNode.append(textNode);
-  root.append(paragraphNode);
-  */
-
-  // const tweetNode = $createTweetNode("1613060550790889475");
-  // root.append(tweetNode);
-  // root.append($createPetyoNode());
 };
 
 const theme = {
@@ -145,18 +137,6 @@ const theme = {
   },
 };
 
-// When the editor changes, you can get notified via the
-// LexicalOnChangePlugin!
-function onChange(editorState: EditorState) {
-  editorState.read(() => {
-    // Read the contents of the EditorState here.
-    const root = $getRoot();
-    console.log($getRoot().exportJSON());
-    const selection = $getSelection();
-    console.log(root.getTextContent());
-  });
-}
-
 // Catch any errors that occur during Lexical updates and log them
 // or throw them as needed. If you don't throw them, Lexical will
 // try to recover gracefully without losing user data.
@@ -164,30 +144,28 @@ function onError(error: Error) {
   console.error(error);
 }
 
-function isLexicalSerializedTextNode(
-  node: SerializedLexicalNode
-): node is SerializedTextNode {
-  return node.type === "text";
-}
-
 function convertLexicalStateToMarkdown(state: EditorState) {
   const rootMdxNode = new RootMdxNode();
   function visitNode(
     parentMdxNode: ParentMdxNode<any>,
-    lexicalChildren: Array<SerializedLexicalNode>
+    lexicalChildren: Array<LexicalNode>
   ) {
-    lexicalChildren.forEach((lexicalChild, index) => {
-      if (lexicalChild.type === "paragraph") {
+    lexicalChildren.forEach((lexicalChild) => {
+      if ($isParagraphNode(lexicalChild)) {
         visitNode(
           parentMdxNode.append(new ParagraphMdxNode()),
-          (lexicalChild as SerializedParagraphNode).children
+          lexicalChild.getChildren()
         );
-      } else if (isLexicalSerializedTextNode(lexicalChild)) {
-        const previousSibling = lexicalChildren[index - 1];
+      } else if ($isQuoteNode(lexicalChild)) {
+        visitNode(
+          parentMdxNode.append(new BlockquoteMdxNode()),
+          lexicalChild.getChildren()
+        );
+      } else if ($isTextNode(lexicalChild)) {
+        const previousSibling = lexicalChild.getPreviousSibling();
 
-        //@ts-ignore
-        const prevFormat = previousSibling?.format ?? 0;
-        const format = lexicalChild.format ?? 0;
+        const prevFormat = previousSibling?.getFormat?.() ?? 0;
+        const format = lexicalChild.getFormat() ?? 0;
 
         let localParentMdxNode = parentMdxNode;
 
@@ -196,7 +174,6 @@ function convertLexicalStateToMarkdown(state: EditorState) {
         }
 
         if (prevFormat & format & IS_BOLD) {
-          console.log("continue bold");
           localParentMdxNode = localParentMdxNode.append(new StrongMdxNode());
         }
 
@@ -220,42 +197,54 @@ function convertLexicalStateToMarkdown(state: EditorState) {
           );
         }
 
-        localParentMdxNode.append(new TextMdxNode(lexicalChild.text));
+        localParentMdxNode.append(
+          new TextMdxNode(lexicalChild.getTextContent())
+        );
       } else {
-        throw new Error(`Unknown node type ${lexicalChild.type}`);
+        console.warn(`Unknown node type ${lexicalChild.type}`, lexicalChild);
       }
     });
   }
 
-  visitNode(rootMdxNode, state.toJSON().root.children);
+  return new Promise<string>((resolve) => {
+    state.read(() => {
+      visitNode(rootMdxNode, $getRoot().getChildren());
+      console.log(rootMdxNode.toTree());
 
-  const resultMarkdown = toMarkdown(rootMdxNode.toTree(), {
-    extensions: [mdxToMarkdown()],
+      const resultMarkdown = toMarkdown(rootMdxNode.toTree(), {
+        extensions: [mdxToMarkdown()],
+      });
+      resolve(resultMarkdown);
+    });
   });
-  console.log(resultMarkdown);
-  console.log(markdown);
 }
 
-function LogStateButton() {
+function MarkdownResult() {
   const [editor] = useLexicalComposerContext();
-  return (
-    <button
-      onClick={() => {
-        convertLexicalStateToMarkdown(editor.getEditorState());
-        // console.log(editor.getEditorState().toJSON());
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    convertLexicalStateToMarkdown(editor.getEditorState()).then((markdown) => {
+      textareaRef.current!.value = markdown;
+    });
+  });
 
-        /*
-        editor.getEditorState().read(() => {
-          const root = $getRoot();
-          console.log(root);
-          console.log(root.getTextContent());
-          console.log(root.exportJSON());
-        });
-        */
-      }}
-    >
-      Log State
-    </button>
+  const onChange = useCallback(() => {
+    convertLexicalStateToMarkdown(editor.getEditorState()).then((markdown) => {
+      textareaRef.current!.value = markdown;
+    });
+  }, [editor, textareaRef]);
+
+  return (
+    <>
+      <h3>Initial markdown</h3>
+      <code>
+        <pre>{initialMarkdown}</pre>
+      </code>
+
+      <h3>Result markdown</h3>
+      <OnChangePlugin onChange={onChange} />
+      <textarea style={{ width: "100%" }} rows={20} ref={textareaRef} />
+    </>
   );
 }
 
@@ -290,11 +279,12 @@ export function Editor() {
         placeholder={<div></div>}
         ErrorBoundary={LexicalErrorBoundary}
       />
+      <hr />
+      <hr />
       <LexicalLinkPlugin />
       <MarkdownShortcutPlugin transformers={TRANSFORMERS} />
-      <OnChangePlugin onChange={onChange} />
       <HistoryPlugin />
-      <LogStateButton />
+      <MarkdownResult />
     </LexicalComposer>
   );
 }

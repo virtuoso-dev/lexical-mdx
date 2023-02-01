@@ -1,9 +1,17 @@
-import type { Root, Paragraph, Text, Emphasis, Strong } from "mdast";
+import type {
+  Root,
+  Paragraph,
+  Blockquote,
+  Text,
+  Emphasis,
+  Strong,
+} from "mdast";
 import { MdxJsxTextElement } from "mdast-util-mdx";
 
 export type ParentNode =
   | Root
   | Paragraph
+  | Blockquote
   | Emphasis
   | Strong
   | MdxJsxTextElement;
@@ -46,11 +54,15 @@ export abstract class ParentMdxNode<MdastNodeType extends ParentNode>
   toTree(): MdastNodeType {
     return {
       type: this.type,
-      children: this.children.map(
-        (child) => child.toTree() as MdastNodeType["children"][number]
-      ),
+      children: this.childrenContents(),
       ...this.additionalAttributes,
     } as MdastNodeType;
+  }
+
+  childrenContents() {
+    return this.children.map(
+      (child) => child.toTree() as MdastNodeType["children"][number]
+    );
   }
 }
 
@@ -60,6 +72,23 @@ export class RootMdxNode extends ParentMdxNode<Root> {
 
 export class ParagraphMdxNode extends ParentMdxNode<Paragraph> {
   type = "paragraph" as const;
+}
+
+export class BlockquoteMdxNode extends ParentMdxNode<Blockquote> {
+  type = "blockquote" as const;
+
+  // apparently, blockquotes need paragraphs for the markdown generation to work.
+  toTree(): Blockquote {
+    return {
+      type: "blockquote",
+      children: [
+        {
+          type: "paragraph",
+          children: this.childrenContents() as any,
+        },
+      ],
+    };
+  }
 }
 
 abstract class CollapsibleMdxNode<
@@ -84,7 +113,7 @@ export class StrongMdxNode extends CollapsibleMdxNode<Strong> {
 
 export class UnderlineMdxNode extends CollapsibleMdxNode<MdxJsxTextElement> {
   type = "mdxJsxTextElement" as const;
-  additionalAttributes: ParentMdxNode["additionalAttributes"] = {
+  additionalAttributes: ParentMdxNode<any>["additionalAttributes"] = {
     name: "u",
     attributes: [],
   };

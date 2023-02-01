@@ -61,7 +61,6 @@ const ToolbarDemo = () => {
 
       let newFormat = format;
 
-      console.log(selection);
       if (selection.hasFormat("bold")) {
         newFormat |= BOLD;
       } else {
