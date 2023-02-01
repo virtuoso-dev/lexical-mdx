@@ -1,10 +1,6 @@
 Bulk up on supported node types
 
-- linebreaks
-- headings
-- lists
-    - ordered
-    - unordered
+- figure out tab indent/outdent
 - code
     - lang
     - meta

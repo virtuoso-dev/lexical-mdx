@@ -14,6 +14,9 @@ import {
   LexicalNode,
   $isParagraphNode,
   $isTextNode,
+  $isLineBreakNode,
+  INDENT_CONTENT_COMMAND,
+  COMMAND_PRIORITY_CRITICAL,
 } from "lexical";
 import { useEffect, useRef, useCallback } from "react";
 
@@ -27,6 +30,8 @@ import { LinkPlugin as LexicalLinkPlugin } from "@lexical/react/LexicalLinkPlugi
 import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
 import { ContentEditable } from "@lexical/react/LexicalContentEditable";
 import { HistoryPlugin } from "@lexical/react/LexicalHistoryPlugin";
+import { TabIndentationPlugin } from "@lexical/react/LexicalTabIndentationPlugin";
+
 import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
 import LexicalErrorBoundary from "@lexical/react/LexicalErrorBoundary";
 // import { TweetNode, $createTweetNode } from "./TweetNode";
@@ -44,10 +49,20 @@ import {
   QuoteNode,
   $createQuoteNode,
   $isQuoteNode,
+  $createHeadingNode,
+  $isHeadingNode,
+  HeadingTagType,
 } from "@lexical/rich-text";
 import { CodeNode } from "@lexical/code";
 import { LinkNode } from "@lexical/link";
-import { ListNode, ListItemNode } from "@lexical/list";
+import {
+  ListNode,
+  ListItemNode,
+  $createListNode,
+  $createListItemNode,
+  $isListNode,
+  $isListItemNode,
+} from "@lexical/list";
 import {
   ParentMdxNode,
   RootMdxNode,
@@ -57,11 +72,21 @@ import {
   StrongMdxNode,
   EmphasisMdxNode,
   BlockquoteMdxNode,
+  HeadingMdxNode,
+  ListMdxNode,
+  ListItemMdxNode,
 } from "./MdxNodes";
+import { ListMaxIndentLevelPlugin } from "./ListMaxIndentLevelPlugin";
 import { toMarkdown } from "mdast-util-to-markdown";
 
 const initialMarkdown = `
-Hello 
+# Hello 
+
+- bullet 1 *something*
+- bullet 2, **bold**
+
+1. item 1
+2. item 2
 
 World Some **nested *formatting* text some more <u>un *derl* ine</u>**.
 
@@ -69,6 +94,11 @@ And *some italic with nested **bold** text*.
 
 > Quote with **bold** and *italic* text.
 > and some more.
+
+## ... and now
+
+Alt heading
+-----------
 
 And some paragraph.
 `;
@@ -94,17 +124,29 @@ const loadContent = () => {
     } else if (node.type === "paragraph") {
       // if lexical parent is a blockquote, skip paragraphs.
       // Otherwise, the user will get stuck when hitting enter in the blockquote.
-      if ($isQuoteNode(lexicalParent)) {
+      if ($isQuoteNode(lexicalParent) || $isListItemNode(lexicalParent)) {
         parentMap.set(node, lexicalParent);
       } else {
         lexicalNode = $createParagraphNode();
-        parentMap.set(node, lexicalNode);
         lexicalParent.append(lexicalNode);
+        parentMap.set(node, lexicalNode);
       }
     } else if (node.type === "blockquote") {
       lexicalNode = $createQuoteNode();
-      parentMap.set(node, lexicalNode);
       lexicalParent.append(lexicalNode);
+      parentMap.set(node, lexicalNode);
+    } else if (node.type === "list") {
+      lexicalNode = $createListNode(node.ordered ? "number" : "bullet");
+      lexicalParent.append(lexicalNode);
+      parentMap.set(node, lexicalNode);
+    } else if (node.type === "listItem") {
+      lexicalNode = $createListItemNode();
+      lexicalParent.append(lexicalNode);
+      parentMap.set(node, lexicalNode);
+    } else if (node.type === "heading") {
+      lexicalNode = $createHeadingNode(`h${node.depth}`);
+      lexicalParent.append(lexicalNode);
+      parentMap.set(node, lexicalNode);
     } else if (node.type === "text") {
       lexicalNode = $createTextNode(node.value);
       lexicalNode.setFormat(formattingMap.get(parent!)!);
@@ -161,6 +203,28 @@ function convertLexicalStateToMarkdown(state: EditorState) {
           parentMdxNode.append(new BlockquoteMdxNode()),
           lexicalChild.getChildren()
         );
+      } else if ($isListNode(lexicalChild)) {
+        visitNode(
+          parentMdxNode.append(
+            new ListMdxNode([], lexicalChild.getListType() === "number")
+          ),
+          lexicalChild.getChildren()
+        );
+      } else if ($isListItemNode(lexicalChild)) {
+        visitNode(
+          parentMdxNode.append(new ListItemMdxNode()),
+          lexicalChild.getChildren()
+        );
+      } else if ($isHeadingNode(lexicalChild)) {
+        const headingDepth = parseInt(
+          (lexicalChild as HeadingNode).getTag()[1],
+          10
+        ) as import("mdast").Heading["depth"];
+
+        visitNode(
+          parentMdxNode.append(new HeadingMdxNode([], headingDepth)),
+          lexicalChild.getChildren()
+        );
       } else if ($isTextNode(lexicalChild)) {
         const previousSibling = lexicalChild.getPreviousSibling();
 
@@ -200,6 +264,8 @@ function convertLexicalStateToMarkdown(state: EditorState) {
         localParentMdxNode.append(
           new TextMdxNode(lexicalChild.getTextContent())
         );
+      } else if ($isLineBreakNode(lexicalChild)) {
+        parentMdxNode.append(new TextMdxNode("\n"));
       } else {
         console.warn(`Unknown node type ${lexicalChild.type}`, lexicalChild);
       }
@@ -209,8 +275,6 @@ function convertLexicalStateToMarkdown(state: EditorState) {
   return new Promise<string>((resolve) => {
     state.read(() => {
       visitNode(rootMdxNode, $getRoot().getChildren());
-      console.log(rootMdxNode.toTree());
-
       const resultMarkdown = toMarkdown(rootMdxNode.toTree(), {
         extensions: [mdxToMarkdown()],
       });
@@ -236,14 +300,14 @@ function MarkdownResult() {
 
   return (
     <>
+      <h3>Result markdown</h3>
+      <OnChangePlugin onChange={onChange} />
+      <textarea style={{ width: "100%" }} rows={20} ref={textareaRef} />
+
       <h3>Initial markdown</h3>
       <code>
         <pre>{initialMarkdown}</pre>
       </code>
-
-      <h3>Result markdown</h3>
-      <OnChangePlugin onChange={onChange} />
-      <textarea style={{ width: "100%" }} rows={20} ref={textareaRef} />
     </>
   );
 }
@@ -282,6 +346,8 @@ export function Editor() {
       <hr />
       <hr />
       <LexicalLinkPlugin />
+      <TabIndentationPlugin />
+      <ListMaxIndentLevelPlugin maxDepth={7} />
       <MarkdownShortcutPlugin transformers={TRANSFORMERS} />
       <HistoryPlugin />
       <MarkdownResult />

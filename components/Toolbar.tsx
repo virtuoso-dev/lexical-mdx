@@ -93,7 +93,6 @@ const ToolbarDemo = () => {
       SELECTION_CHANGE_COMMAND,
       (_payload, newEditor) => {
         updateToolbar();
-        console.log("SELECTION_CHANGE_COMMAND");
         setActiveEditor(newEditor);
         return false;
       },
@@ -116,13 +115,11 @@ const ToolbarDemo = () => {
         type="multiple"
         aria-label="Text formatting"
         onValueChange={(e) => {
-          console.log({ timestamp });
           let newFormat = DEFAULT_FORMAT;
           e.map((value) => {
             newFormat |= parseInt(value);
           });
 
-          console.log(JSON.stringify(FormatMap.get(format ^ newFormat)));
           activeEditor.dispatchCommand(
             FORMAT_TEXT_COMMAND,
             FormatMap.get(format ^ newFormat)!

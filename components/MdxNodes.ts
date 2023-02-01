@@ -5,15 +5,21 @@ import type {
   Text,
   Emphasis,
   Strong,
+  Heading,
+  List,
+  ListItem,
 } from "mdast";
 import { MdxJsxTextElement } from "mdast-util-mdx";
 
 export type ParentNode =
   | Root
   | Paragraph
+  | Heading
   | Blockquote
   | Emphasis
   | Strong
+  | List
+  | ListItem
   | MdxJsxTextElement;
 type Node = ParentNode | Text;
 
@@ -28,7 +34,9 @@ export abstract class ParentMdxNode<MdastNodeType extends ParentNode>
   implements MdxNode
 {
   abstract type: MdastNodeType["type"];
-  additionalAttributes: { name?: string; attributes?: Array<any> } = {};
+  get additionalAttributes() {
+    return {} as any;
+  }
   constructor(public children: MdxNode[] = []) {}
 
   join<T extends this>(_node: T): T {
@@ -70,8 +78,46 @@ export class RootMdxNode extends ParentMdxNode<Root> {
   type = "root" as const;
 }
 
+export class HeadingMdxNode extends ParentMdxNode<Heading> {
+  type = "heading" as const;
+  constructor(public children: MdxNode[] = [], public depth: Heading["depth"]) {
+    super(children);
+  }
+
+  get additionalAttributes() {
+    return { depth: this.depth };
+  }
+}
+
 export class ParagraphMdxNode extends ParentMdxNode<Paragraph> {
   type = "paragraph" as const;
+}
+
+export class ListMdxNode extends ParentMdxNode<List> {
+  type = "list" as const;
+  constructor(public children: MdxNode[] = [], public ordered: boolean) {
+    super(children);
+  }
+
+  get additionalAttributes() {
+    return { ordered: this.ordered };
+  }
+}
+
+export class ListItemMdxNode extends ParentMdxNode<ListItem> {
+  type = "listItem" as const;
+  // apparently, blockquotes need paragraphs for the markdown generation to work.
+  toTree(): ListItem {
+    return {
+      type: "listItem",
+      children: [
+        {
+          type: "paragraph",
+          children: this.childrenContents() as any,
+        },
+      ],
+    };
+  }
 }
 
 export class BlockquoteMdxNode extends ParentMdxNode<Blockquote> {
@@ -113,10 +159,12 @@ export class StrongMdxNode extends CollapsibleMdxNode<Strong> {
 
 export class UnderlineMdxNode extends CollapsibleMdxNode<MdxJsxTextElement> {
   type = "mdxJsxTextElement" as const;
-  additionalAttributes: ParentMdxNode<any>["additionalAttributes"] = {
-    name: "u",
-    attributes: [],
-  };
+  get additionalAttributes() {
+    return {
+      name: "u",
+      attributes: [],
+    };
+  }
 }
 
 export class TextMdxNode implements MdxNode {
