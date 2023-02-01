@@ -1,6 +1,10 @@
 Bulk up on supported node types
 
 - figure out tab indent/outdent
+- needs ListPlugin
+- need styling to remove nested bullets
+- needs to figure out the indent of the bullets.
+
 - code
     - lang
     - meta

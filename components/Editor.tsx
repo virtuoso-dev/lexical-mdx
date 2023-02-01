@@ -76,14 +76,14 @@ import {
   ListMdxNode,
   ListItemMdxNode,
 } from "./MdxNodes";
-import { ListMaxIndentLevelPlugin } from "./ListMaxIndentLevelPlugin";
+import { ListPlugin } from "@lexical/react/LexicalListPlugin";
 import { toMarkdown } from "mdast-util-to-markdown";
 
 const initialMarkdown = `
 # Hello 
 
-- bullet 1 *something*
-- bullet 2, **bold**
+ - bullet 1 *something*
+ - bullet 2, **bold**
 
 1. item 1
 2. item 2
@@ -176,6 +176,23 @@ const theme = {
     superscript: "PlaygroundEditorTheme__textSuperscript",
     underline: "PlaygroundEditorTheme__textUnderline",
     underlineStrikethrough: "PlaygroundEditorTheme__textUnderlineStrikethrough",
+  },
+
+  list: {
+    listitem: "PlaygroundEditorTheme__listItem",
+    listitemChecked: "PlaygroundEditorTheme__listItemChecked",
+    listitemUnchecked: "PlaygroundEditorTheme__listItemUnchecked",
+    nested: {
+      listitem: "PlaygroundEditorTheme__nestedListItem",
+    },
+    olDepth: [
+      "PlaygroundEditorTheme__ol1",
+      "PlaygroundEditorTheme__ol2",
+      "PlaygroundEditorTheme__ol3",
+      "PlaygroundEditorTheme__ol4",
+      "PlaygroundEditorTheme__ol5",
+    ],
+    ul: "PlaygroundEditorTheme__ul",
   },
 };
 
@@ -346,8 +363,8 @@ export function Editor() {
       <hr />
       <hr />
       <LexicalLinkPlugin />
+      <ListPlugin />
       <TabIndentationPlugin />
-      <ListMaxIndentLevelPlugin maxDepth={7} />
       <MarkdownShortcutPlugin transformers={TRANSFORMERS} />
       <HistoryPlugin />
       <MarkdownResult />
