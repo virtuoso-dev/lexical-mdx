@@ -26,3 +26,7 @@ blockquote {
 .PlaygroundEditorTheme__textUnderlineStrikethrough {
   text-decoration: underline line-through;
 }
+
+.PlaygroundEditorTheme__nestedListItem {
+  list-style-type: none;
+}

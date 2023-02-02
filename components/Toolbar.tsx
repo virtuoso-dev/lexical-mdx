@@ -21,18 +21,19 @@ import {
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { $findMatchingParent } from "@lexical/utils";
 import { $isParentElementRTL } from "@lexical/selection";
-
-const DEFAULT_FORMAT = 0b0000;
-const BOLD = 0b0001;
-const ITALIC = 0b0010;
-const UNDERLINE = 0b0100;
-const STRIKETHROUGH = 0b1000;
+import {
+  DEFAULT_FORMAT,
+  IS_BOLD,
+  IS_ITALIC,
+  IS_UNDERLINE,
+  IS_STRIKETHROUGH,
+} from "./FormatConstants";
 
 const FormatMap = new Map<number, TextFormatType>([
-  [BOLD, "bold"],
-  [ITALIC, "italic"],
-  [UNDERLINE, "underline"],
-  [STRIKETHROUGH, "strikethrough"],
+  [IS_BOLD, "bold"],
+  [IS_ITALIC, "italic"],
+  [IS_UNDERLINE, "underline"],
+  [IS_STRIKETHROUGH, "strikethrough"],
 ]);
 
 const ToolbarDemo = () => {
@@ -62,27 +63,27 @@ const ToolbarDemo = () => {
       let newFormat = format;
 
       if (selection.hasFormat("bold")) {
-        newFormat |= BOLD;
+        newFormat |= IS_BOLD;
       } else {
-        newFormat &= ~BOLD;
+        newFormat &= ~IS_BOLD;
       }
 
       if (selection.hasFormat("italic")) {
-        newFormat |= ITALIC;
+        newFormat |= IS_ITALIC;
       } else {
-        newFormat &= ~ITALIC;
+        newFormat &= ~IS_ITALIC;
       }
 
       if (selection.hasFormat("underline")) {
-        newFormat |= UNDERLINE;
+        newFormat |= IS_UNDERLINE;
       } else {
-        newFormat &= ~UNDERLINE;
+        newFormat &= ~IS_UNDERLINE;
       }
 
       if (selection.hasFormat("strikethrough")) {
-        newFormat |= STRIKETHROUGH;
+        newFormat |= IS_STRIKETHROUGH;
       } else {
-        newFormat &= ~STRIKETHROUGH;
+        newFormat &= ~IS_STRIKETHROUGH;
       }
       setFormat(newFormat);
     }
@@ -128,14 +129,14 @@ const ToolbarDemo = () => {
       >
         <Toolbar.ToggleItem
           className="ToolbarToggleItem"
-          value={BOLD.toString()}
+          value={IS_BOLD.toString()}
           aria-label="Bold"
         >
           <FontBoldIcon />
         </Toolbar.ToggleItem>
         <Toolbar.ToggleItem
           className="ToolbarToggleItem"
-          value={ITALIC.toString()}
+          value={IS_ITALIC.toString()}
           aria-label="Italic"
         >
           <FontItalicIcon />
@@ -143,14 +144,14 @@ const ToolbarDemo = () => {
 
         <Toolbar.ToggleItem
           className="ToolbarToggleItem"
-          value={UNDERLINE.toString()}
+          value={IS_UNDERLINE.toString()}
           aria-label="Underline"
         >
           <UnderlineIcon />
         </Toolbar.ToggleItem>
         <Toolbar.ToggleItem
           className="ToolbarToggleItem"
-          value={STRIKETHROUGH.toString()}
+          value={IS_STRIKETHROUGH.toString()}
           aria-label="Strike through"
         >
           <StrikethroughIcon />

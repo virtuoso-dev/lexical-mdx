@@ -18,12 +18,7 @@ import {
   INDENT_CONTENT_COMMAND,
   COMMAND_PRIORITY_CRITICAL,
 } from "lexical";
-import { useEffect, useRef, useCallback } from "react";
-
-const IS_BOLD = 1;
-const IS_ITALIC = 1 << 1;
-// const IS_STRIKETHROUGH = 1 << 2;
-const IS_UNDERLINE = 1 << 3;
+import { useEffect, useRef, useCallback, useState } from "react";
 
 import { LexicalComposer } from "@lexical/react/LexicalComposer";
 import { LinkPlugin as LexicalLinkPlugin } from "@lexical/react/LexicalLinkPlugin";
@@ -75,15 +70,21 @@ import {
   HeadingMdxNode,
   ListMdxNode,
   ListItemMdxNode,
+  InlineCodeMdxNode,
 } from "./MdxNodes";
 import { ListPlugin } from "@lexical/react/LexicalListPlugin";
 import { toMarkdown } from "mdast-util-to-markdown";
+import { IS_BOLD, IS_ITALIC, IS_UNDERLINE, IS_CODE } from "./FormatConstants";
 
-const initialMarkdown = `
+let initialMarkdown = `
+some \`inlineVariable\` code
+
 # Hello 
 
  - bullet 1 *something*
- - bullet 2, **bold**
+ - bullet 2, **bold** some more text
+    - nested bullet
+    - nested bullet 2
 
 1. item 1
 2. item 2
@@ -117,6 +118,16 @@ const loadContent = () => {
   parentMap.set(tree, root);
 
   visit(tree, (node, _index, parent) => {
+    function addFormatting(
+      format:
+        | typeof IS_BOLD
+        | typeof IS_ITALIC
+        | typeof IS_UNDERLINE
+        | typeof IS_CODE
+    ) {
+      formattingMap.set(node, format | (formattingMap.get(parent!) ?? 0));
+    }
+
     let lexicalNode: ElementNode | TextNode;
     const lexicalParent = parentMap.get(parent!)!;
     if (node.type === "root") {
@@ -137,7 +148,13 @@ const loadContent = () => {
       parentMap.set(node, lexicalNode);
     } else if (node.type === "list") {
       lexicalNode = $createListNode(node.ordered ? "number" : "bullet");
-      lexicalParent.append(lexicalNode);
+      if ($isListItemNode(lexicalParent)) {
+        const dedicatedParent = $createListItemNode();
+        lexicalParent.insertAfter(dedicatedParent);
+        dedicatedParent.append(lexicalNode);
+      } else {
+        lexicalParent.append(lexicalNode);
+      }
       parentMap.set(node, lexicalNode);
     } else if (node.type === "listItem") {
       lexicalNode = $createListItemNode();
@@ -152,14 +169,18 @@ const loadContent = () => {
       lexicalNode.setFormat(formattingMap.get(parent!)!);
       lexicalParent.append(lexicalNode);
     } else if (node.type === "emphasis") {
-      formattingMap.set(node, IS_ITALIC | (formattingMap.get(parent!) ?? 0));
+      addFormatting(IS_ITALIC);
       parentMap.set(node, lexicalParent);
     } else if (node.type === "strong") {
-      formattingMap.set(node, IS_BOLD | (formattingMap.get(parent!) ?? 0));
+      addFormatting(IS_BOLD);
       parentMap.set(node, lexicalParent);
     } else if (node.type === "mdxJsxTextElement" && node.name === "u") {
-      formattingMap.set(node, IS_UNDERLINE | (formattingMap.get(parent!) ?? 0));
+      addFormatting(IS_UNDERLINE);
       parentMap.set(node, lexicalParent);
+    } else if (node.type === "inlineCode") {
+      lexicalNode = $createTextNode(node.value);
+      lexicalNode.setFormat(IS_CODE);
+      lexicalParent.append(lexicalNode);
     } else {
       throw new Error(`Unknown node type ${node.type}`);
     }
@@ -179,20 +200,9 @@ const theme = {
   },
 
   list: {
-    listitem: "PlaygroundEditorTheme__listItem",
-    listitemChecked: "PlaygroundEditorTheme__listItemChecked",
-    listitemUnchecked: "PlaygroundEditorTheme__listItemUnchecked",
     nested: {
       listitem: "PlaygroundEditorTheme__nestedListItem",
     },
-    olDepth: [
-      "PlaygroundEditorTheme__ol1",
-      "PlaygroundEditorTheme__ol2",
-      "PlaygroundEditorTheme__ol3",
-      "PlaygroundEditorTheme__ol4",
-      "PlaygroundEditorTheme__ol5",
-    ],
-    ul: "PlaygroundEditorTheme__ul",
   },
 };
 
@@ -221,6 +231,7 @@ function convertLexicalStateToMarkdown(state: EditorState) {
           lexicalChild.getChildren()
         );
       } else if ($isListNode(lexicalChild)) {
+        const lexicalParent = lexicalChild.getParent();
         visitNode(
           parentMdxNode.append(
             new ListMdxNode([], lexicalChild.getListType() === "number")
@@ -228,10 +239,23 @@ function convertLexicalStateToMarkdown(state: EditorState) {
           lexicalChild.getChildren()
         );
       } else if ($isListItemNode(lexicalChild)) {
-        visitNode(
-          parentMdxNode.append(new ListItemMdxNode()),
-          lexicalChild.getChildren()
-        );
+        const children = lexicalChild.getChildren();
+        const firstChild = children[0];
+        if (children.length === 1 && $isListNode(firstChild)) {
+          console.log("nested list in to markdown ");
+          // append the list ater the paragraph of the previous list item
+          const prevListItemMdxNode = parentMdxNode.children.at(
+            -1
+          )! as ListItemMdxNode;
+          // TODO: invariant for having prevListItemMdxNode
+          visitNode(prevListItemMdxNode, lexicalChild.getChildren());
+        } else {
+          const mdxNode = new ListItemMdxNode();
+          const paragraphWrapper = new ParagraphMdxNode();
+          mdxNode.append(paragraphWrapper);
+          parentMdxNode.append(mdxNode);
+          visitNode(paragraphWrapper, lexicalChild.getChildren());
+        }
       } else if ($isHeadingNode(lexicalChild)) {
         const headingDepth = parseInt(
           (lexicalChild as HeadingNode).getTag()[1],
@@ -244,9 +268,15 @@ function convertLexicalStateToMarkdown(state: EditorState) {
         );
       } else if ($isTextNode(lexicalChild)) {
         const previousSibling = lexicalChild.getPreviousSibling();
-
         const prevFormat = previousSibling?.getFormat?.() ?? 0;
         const format = lexicalChild.getFormat() ?? 0;
+
+        if (format & IS_CODE) {
+          parentMdxNode.append(
+            new InlineCodeMdxNode(lexicalChild.getTextContent())
+          );
+          return;
+        }
 
         let localParentMdxNode = parentMdxNode;
 
@@ -292,8 +322,10 @@ function convertLexicalStateToMarkdown(state: EditorState) {
   return new Promise<string>((resolve) => {
     state.read(() => {
       visitNode(rootMdxNode, $getRoot().getChildren());
+      console.log(rootMdxNode.toTree());
       const resultMarkdown = toMarkdown(rootMdxNode.toTree(), {
         extensions: [mdxToMarkdown()],
+        listItemIndent: "one",
       });
       resolve(resultMarkdown);
     });
@@ -302,29 +334,37 @@ function convertLexicalStateToMarkdown(state: EditorState) {
 
 function MarkdownResult() {
   const [editor] = useLexicalComposerContext();
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [outMarkdown, setOutMarkdown] = useState("");
   useEffect(() => {
     convertLexicalStateToMarkdown(editor.getEditorState()).then((markdown) => {
-      textareaRef.current!.value = markdown;
+      setOutMarkdown(markdown);
     });
   });
 
   const onChange = useCallback(() => {
     convertLexicalStateToMarkdown(editor.getEditorState()).then((markdown) => {
-      textareaRef.current!.value = markdown;
+      setOutMarkdown(markdown);
     });
-  }, [editor, textareaRef]);
+  }, [editor]);
 
   return (
     <>
-      <h3>Result markdown</h3>
-      <OnChangePlugin onChange={onChange} />
-      <textarea style={{ width: "100%" }} rows={20} ref={textareaRef} />
+      <div style={{ display: "flex" }}>
+        <div style={{ flex: 1 }}>
+          <h3>Result markdown</h3>
+          <OnChangePlugin onChange={onChange} />
 
-      <h3>Initial markdown</h3>
-      <code>
-        <pre>{initialMarkdown}</pre>
-      </code>
+          <code>
+            <pre>{outMarkdown.trim()}</pre>
+          </code>
+        </div>
+        <div style={{ flex: 1 }}>
+          <h3>Initial markdown</h3>
+          <code>
+            <pre>{initialMarkdown.trim()}</pre>
+          </code>
+        </div>
+      </div>
     </>
   );
 }

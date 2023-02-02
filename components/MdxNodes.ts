@@ -7,7 +7,7 @@ import type {
   Strong,
   Heading,
   List,
-  ListItem,
+  ListItem, InlineCode
 } from "mdast";
 import { MdxJsxTextElement } from "mdast-util-mdx";
 
@@ -24,7 +24,7 @@ export type ParentNode =
 type Node = ParentNode | Text;
 
 export interface MdxNode {
-  type: Node["type"];
+  type: Node["type"] | "inlineCode";
   toTree(): any;
   shouldJoinWith(next: MdxNode): boolean;
   join<T extends this>(next: T): T;
@@ -100,23 +100,15 @@ export class ListMdxNode extends ParentMdxNode<List> {
   }
 
   get additionalAttributes() {
-    return { ordered: this.ordered };
+    return { ordered: this.ordered, spread: false };
   }
 }
 
 export class ListItemMdxNode extends ParentMdxNode<ListItem> {
   type = "listItem" as const;
-  // apparently, blockquotes need paragraphs for the markdown generation to work.
-  toTree(): ListItem {
-    return {
-      type: "listItem",
-      children: [
-        {
-          type: "paragraph",
-          children: this.childrenContents() as any,
-        },
-      ],
-    };
+
+  get additionalAttributes() {
+    return { spread: false };
   }
 }
 
@@ -183,6 +175,26 @@ export class TextMdxNode implements MdxNode {
   toTree(): Text {
     return {
       type: "text",
+      value: this.value,
+    };
+  }
+}
+
+export class InlineCodeMdxNode implements MdxNode {
+  type = "inlineCode" as const;
+  constructor(public value: string) {}
+
+  shouldJoinWith(): boolean {
+    return false;
+  }
+
+  join(): any {
+    throw new Error("code nodes should not join");
+  }
+
+  toTree(): InlineCode {
+    return {
+      type: this.type,
       value: this.value,
     };
   }
