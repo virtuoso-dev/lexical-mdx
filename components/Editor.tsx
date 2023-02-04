@@ -41,7 +41,7 @@ import { TRANSFORMERS } from '@lexical/markdown'
 import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPlugin'
 import { HeadingNode, QuoteNode, $createQuoteNode, $isQuoteNode, $createHeadingNode, $isHeadingNode } from '@lexical/rich-text'
 import { CodeNode } from '@lexical/code'
-import { LinkNode } from '@lexical/link'
+import { LinkNode, $createLinkNode, $isLinkNode } from '@lexical/link'
 import { ListNode, ListItemNode, $createListNode, $createListItemNode, $isListNode, $isListItemNode } from '@lexical/list'
 import {
   ParentMdxNode,
@@ -56,6 +56,7 @@ import {
   ListMdxNode,
   ListItemMdxNode,
   InlineCodeMdxNode,
+  LinkMdxNode,
 } from './MdxNodes'
 import { ListPlugin } from '@lexical/react/LexicalListPlugin'
 import { toMarkdown } from 'mdast-util-to-markdown'
@@ -65,6 +66,8 @@ import type { Node as UnistNode } from 'unist'
 
 const initialMarkdown = `
 some \`inlineVariable\` code
+
+[A link](https://google.com/ "Googl Title")
 
 # Hello 
 
@@ -123,6 +126,10 @@ const loadContent = () => {
         lexicalParent.append(lexicalNode)
         parentMap.set(node, lexicalNode)
       }
+    } else if (node.type === 'link') {
+      lexicalNode = $createLinkNode(node.url)
+      lexicalParent.append(lexicalNode)
+      parentMap.set(node, lexicalNode)
     } else if (node.type === 'blockquote') {
       lexicalNode = $createQuoteNode()
       lexicalParent.append(lexicalNode)
@@ -200,6 +207,8 @@ function convertLexicalStateToMarkdown(state: EditorState) {
     lexicalChildren.forEach((lexicalChild) => {
       if ($isParagraphNode(lexicalChild)) {
         visitNode(parentMdxNode.append(new ParagraphMdxNode()), lexicalChild.getChildren())
+      } else if ($isLinkNode(lexicalChild)) {
+        visitNode(parentMdxNode.append(new LinkMdxNode([], lexicalChild.getURL())), lexicalChild.getChildren())
       } else if ($isQuoteNode(lexicalChild)) {
         visitNode(parentMdxNode.append(new BlockquoteMdxNode()), lexicalChild.getChildren())
       } else if ($isListNode(lexicalChild)) {
@@ -221,7 +230,6 @@ function convertLexicalStateToMarkdown(state: EditorState) {
         }
       } else if ($isHeadingNode(lexicalChild)) {
         const headingDepth = parseInt(lexicalChild.getTag()[1], 10) as import('mdast').Heading['depth']
-
         visitNode(parentMdxNode.append(new HeadingMdxNode([], headingDepth)), lexicalChild.getChildren())
       } else if ($isTextNode(lexicalChild)) {
         const previousSibling = lexicalChild.getPreviousSibling()

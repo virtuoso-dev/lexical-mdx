@@ -1,5 +1,3 @@
-Bulk up on supported node types
-
 - code
     - lang
     - meta
@@ -13,6 +11,9 @@ recipe for integration of a new node
 - parse it in the from markdown
 - create the MDX node class
 - handle the toMarkdown
+
+Icebox
+- link titles
 
 MarkdownLexicalAdapters
 

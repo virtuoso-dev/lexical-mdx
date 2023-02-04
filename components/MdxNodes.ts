@@ -1,7 +1,7 @@
-import type { Root, Paragraph, Blockquote, Text, Emphasis, Strong, Heading, List, ListItem, InlineCode } from 'mdast'
+import type { Root, Paragraph, Blockquote, Text, Emphasis, Strong, Heading, List, ListItem, InlineCode, Link } from 'mdast'
 import { MdxJsxTextElement } from 'mdast-util-mdx'
 
-export type ParentNode = Root | Paragraph | Heading | Blockquote | Emphasis | Strong | List | ListItem | MdxJsxTextElement
+export type ParentNode = Root | Paragraph | Heading | Blockquote | Emphasis | Strong | List | ListItem | MdxJsxTextElement | Link
 type Node = ParentNode | Text
 
 export interface MdxNode {
@@ -70,6 +70,17 @@ export class ParagraphMdxNode extends ParentMdxNode<Paragraph> {
   type = 'paragraph' as const
 }
 
+export class LinkMdxNode extends ParentMdxNode<Link> {
+  type = 'link' as const
+
+  constructor(public children: MdxNode[] = [], public url: string) {
+    super(children)
+  }
+
+  get additionalAttributes() {
+    return { url: this.url }
+  }
+}
 export class ListMdxNode extends ParentMdxNode<List> {
   type = 'list' as const
   constructor(public children: MdxNode[] = [], public ordered: boolean) {
