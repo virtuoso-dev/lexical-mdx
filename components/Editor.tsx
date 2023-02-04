@@ -63,6 +63,7 @@ import { toMarkdown } from 'mdast-util-to-markdown'
 import { IS_BOLD, IS_ITALIC, IS_UNDERLINE, IS_CODE } from './FormatConstants'
 import type { Parent as MdastParent } from 'mdast'
 import type { Node as UnistNode } from 'unist'
+import { LinkUIPlugin } from './LinkUIPlugin'
 
 const initialMarkdown = `
 some \`inlineVariable\` code
@@ -279,7 +280,6 @@ function convertLexicalStateToMarkdown(state: EditorState) {
   return new Promise<string>((resolve) => {
     state.read(() => {
       visitNode(rootMdxNode, $getRoot().getChildren())
-      console.log(rootMdxNode.toTree())
       const resultMarkdown = toMarkdown(rootMdxNode.toTree(), {
         extensions: [mdxToMarkdown()],
         listItemIndent: 'one',
@@ -343,11 +343,12 @@ export function Editor() {
 
   return (
     <LexicalComposer initialConfig={initialConfig}>
+      <LinkUIPlugin />
       <RichTextPlugin
         contentEditable={
           <>
             <ToolbarDemo />
-            <ContentEditable />
+            <ContentEditable className="EditorContentEditable" />
           </>
         }
         placeholder={<div></div>}

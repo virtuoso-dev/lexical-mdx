@@ -1,7 +1,6 @@
 body {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji",
-    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif,
+    'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   color: #333;
 }
 
@@ -29,4 +28,12 @@ blockquote {
 
 .PlaygroundEditorTheme__nestedListItem {
   list-style-type: none;
+}
+
+.EditorContentEditable {
+  padding: 1rem;
+}
+
+.EditorContentEditable:focus {
+  outline: none;
 }
