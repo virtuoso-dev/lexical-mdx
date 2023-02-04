@@ -1,61 +1,40 @@
-import type {
-  Root,
-  Paragraph,
-  Blockquote,
-  Text,
-  Emphasis,
-  Strong,
-  Heading,
-  List,
-  ListItem, InlineCode
-} from "mdast";
-import { MdxJsxTextElement } from "mdast-util-mdx";
+import type { Root, Paragraph, Blockquote, Text, Emphasis, Strong, Heading, List, ListItem, InlineCode } from 'mdast'
+import { MdxJsxTextElement } from 'mdast-util-mdx'
 
-export type ParentNode =
-  | Root
-  | Paragraph
-  | Heading
-  | Blockquote
-  | Emphasis
-  | Strong
-  | List
-  | ListItem
-  | MdxJsxTextElement;
-type Node = ParentNode | Text;
+export type ParentNode = Root | Paragraph | Heading | Blockquote | Emphasis | Strong | List | ListItem | MdxJsxTextElement
+type Node = ParentNode | Text
 
 export interface MdxNode {
-  type: Node["type"] | "inlineCode";
-  toTree(): any;
-  shouldJoinWith(next: MdxNode): boolean;
-  join<T extends this>(next: T): T;
+  type: Node['type'] | 'inlineCode'
+  toTree(): any
+  shouldJoinWith(next: MdxNode): boolean
+  join<T extends this>(next: T): T
 }
 
-export abstract class ParentMdxNode<MdastNodeType extends ParentNode>
-  implements MdxNode
-{
-  abstract type: MdastNodeType["type"];
+export abstract class ParentMdxNode<MdastNodeType extends ParentNode> implements MdxNode {
+  abstract type: MdastNodeType['type']
   get additionalAttributes() {
-    return {} as any;
+    return {} as any
   }
   constructor(public children: MdxNode[] = []) {}
 
   join<T extends this>(_node: T): T {
-    throw new Error("Method not implemented.");
+    throw new Error('Method not implemented.')
   }
 
   shouldJoinWith(_node: MdxNode): boolean {
-    return false;
+    return false
   }
 
   append<T extends MdxNode>(node: T): T {
-    const lastChild = this.children[this.children.length - 1];
+    const lastChild = this.children[this.children.length - 1]
     if (lastChild?.shouldJoinWith(node)) {
-      const joined = lastChild.join(node);
-      this.children.splice(this.children.length - 1, 1, joined);
-      return joined as T;
+      const joined = lastChild.join(node)
+      this.children.splice(this.children.length - 1, 1, joined)
+      return joined
     } else {
-      this.children.push(node);
-      return node;
+      this.children.push(node)
+      return node
     }
   }
 
@@ -64,138 +43,134 @@ export abstract class ParentMdxNode<MdastNodeType extends ParentNode>
       type: this.type,
       children: this.childrenContents(),
       ...this.additionalAttributes,
-    } as MdastNodeType;
+    } as MdastNodeType
   }
 
   childrenContents() {
-    return this.children.map(
-      (child) => child.toTree() as MdastNodeType["children"][number]
-    );
+    return this.children.map((child) => child.toTree() as MdastNodeType['children'][number])
   }
 }
 
 export class RootMdxNode extends ParentMdxNode<Root> {
-  type = "root" as const;
+  type = 'root' as const
 }
 
 export class HeadingMdxNode extends ParentMdxNode<Heading> {
-  type = "heading" as const;
-  constructor(public children: MdxNode[] = [], public depth: Heading["depth"]) {
-    super(children);
+  type = 'heading' as const
+  constructor(public children: MdxNode[] = [], public depth: Heading['depth']) {
+    super(children)
   }
 
   get additionalAttributes() {
-    return { depth: this.depth };
+    return { depth: this.depth }
   }
 }
 
 export class ParagraphMdxNode extends ParentMdxNode<Paragraph> {
-  type = "paragraph" as const;
+  type = 'paragraph' as const
 }
 
 export class ListMdxNode extends ParentMdxNode<List> {
-  type = "list" as const;
+  type = 'list' as const
   constructor(public children: MdxNode[] = [], public ordered: boolean) {
-    super(children);
+    super(children)
   }
 
   get additionalAttributes() {
-    return { ordered: this.ordered, spread: false };
+    return { ordered: this.ordered, spread: false }
   }
 }
 
 export class ListItemMdxNode extends ParentMdxNode<ListItem> {
-  type = "listItem" as const;
+  type = 'listItem' as const
 
   get additionalAttributes() {
-    return { spread: false };
+    return { spread: false }
   }
 }
 
 export class BlockquoteMdxNode extends ParentMdxNode<Blockquote> {
-  type = "blockquote" as const;
+  type = 'blockquote' as const
 
   // apparently, blockquotes need paragraphs for the markdown generation to work.
   toTree(): Blockquote {
     return {
-      type: "blockquote",
+      type: 'blockquote',
       children: [
         {
-          type: "paragraph",
+          type: 'paragraph',
           children: this.childrenContents() as any,
         },
       ],
-    };
+    }
   }
 }
 
-abstract class CollapsibleMdxNode<
-  MdastNodeType extends ParentNode
-> extends ParentMdxNode<MdastNodeType> {
+abstract class CollapsibleMdxNode<MdastNodeType extends ParentNode> extends ParentMdxNode<MdastNodeType> {
   shouldJoinWith(next: MdxNode): boolean {
-    return next.type === this.type;
+    return next.type === this.type
   }
 
   join<T extends this>(next: T) {
-    return new (this as any).constructor([...this.children, ...next.children]);
+    return new (this as any).constructor([...this.children, ...next.children])
   }
 }
 
 export class EmphasisMdxNode extends CollapsibleMdxNode<Emphasis> {
-  type = "emphasis" as const;
+  type = 'emphasis' as const
 }
 
 export class StrongMdxNode extends CollapsibleMdxNode<Strong> {
-  type = "strong" as const;
+  type = 'strong' as const
 }
 
 export class UnderlineMdxNode extends CollapsibleMdxNode<MdxJsxTextElement> {
-  type = "mdxJsxTextElement" as const;
+  type = 'mdxJsxTextElement' as const
   get additionalAttributes() {
     return {
-      name: "u",
+      name: 'u',
       attributes: [],
-    };
+    }
   }
 }
 
 export class TextMdxNode implements MdxNode {
-  type = "text" as const;
+  type = 'text' as const
 
   constructor(public value: string) {}
 
   shouldJoinWith(next: MdxNode): boolean {
-    return next.type === "text";
+    return next.type === 'text'
   }
 
   join<T extends TextMdxNode>(next: T): T {
-    return new TextMdxNode(this.value + (next as TextMdxNode).value) as T;
+    return new TextMdxNode(this.value + (next as TextMdxNode).value) as T
   }
 
   toTree(): Text {
     return {
-      type: "text",
+      type: 'text',
       value: this.value,
-    };
+    }
   }
 }
 
 export class InlineCodeMdxNode implements MdxNode {
-  type = "inlineCode" as const;
+  type = 'inlineCode' as const
   constructor(public value: string) {}
 
   shouldJoinWith(): boolean {
-    return false;
+    return false
   }
 
   join(): any {
-    throw new Error("code nodes should not join");
+    throw new Error('code nodes should not join')
   }
 
   toTree(): InlineCode {
     return {
       type: this.type,
       value: this.value,
-    };
+    }
   }
 }

@@ -7,7 +7,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint components pages test --ext .ts,.tsx",
     "test": "vitest"
   },
   "dependencies": {
@@ -42,6 +42,14 @@
     "@radix-ui/react-icons": "^1.1.1",
     "@radix-ui/react-toolbar": "^1.0.2",
     "@types/mdast": "^3.0.10",
+    "@types/unist": "^2.0.6",
+    "@typescript-eslint/eslint-plugin": "^5.50.0",
+    "@typescript-eslint/parser": "^5.50.0",
+    "eslint-config-prettier": "^8.6.0",
+    "eslint-plugin-html": "^7.1.0",
+    "eslint-plugin-json": "^3.1.0",
+    "eslint-plugin-prettier": "^4.2.1",
+    "prettier": "^2.8.3",
     "vitest": "^0.28.3"
   }
 }
