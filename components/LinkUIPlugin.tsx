@@ -2,16 +2,16 @@ import React from 'react'
 import * as Popover from '@radix-ui/react-popover'
 import * as Tooltip from '@radix-ui/react-tooltip'
 
-import { Pencil1Icon, LinkBreak1Icon, ClipboardCopyIcon, ExternalLinkIcon, CheckIcon, Cross2Icon } from '@radix-ui/react-icons'
+import { CheckIcon, ClipboardCopyIcon, Cross2Icon, ExternalLinkIcon, LinkBreak1Icon, Pencil1Icon } from '@radix-ui/react-icons'
 import {
-  SELECTION_CHANGE_COMMAND,
-  COMMAND_PRIORITY_LOW,
   $getSelection,
   $isRangeSelection,
+  COMMAND_PRIORITY_LOW,
   ElementNode,
-  RangeSelection,
-  TextNode,
   LexicalEditor,
+  RangeSelection,
+  SELECTION_CHANGE_COMMAND,
+  TextNode,
 } from 'lexical'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { $isAtNodeEnd } from '@lexical/selection'

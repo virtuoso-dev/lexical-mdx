@@ -2,23 +2,19 @@
  * @typedef {import('mdast-util-mdx')}
  */
 import {
-  $createLineBreakNode,
   $createParagraphNode,
   $createTextNode,
   $getRoot,
-  $getSelection,
-  EditorState,
-  ElementNode,
-  ParagraphNode,
-  TextNode,
-  LexicalNode,
+  $isLineBreakNode,
   $isParagraphNode,
   $isTextNode,
-  $isLineBreakNode,
-  INDENT_CONTENT_COMMAND,
-  COMMAND_PRIORITY_CRITICAL,
+  EditorState,
+  ElementNode,
+  LexicalNode,
+  ParagraphNode,
+  TextNode,
 } from 'lexical'
-import { useEffect, useRef, useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { LinkPlugin as LexicalLinkPlugin } from '@lexical/react/LexicalLinkPlugin'
@@ -29,8 +25,6 @@ import { TabIndentationPlugin } from '@lexical/react/LexicalTabIndentationPlugin
 
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin'
 import LexicalErrorBoundary from '@lexical/react/LexicalErrorBoundary'
-// import { TweetNode, $createTweetNode } from "./TweetNode";
-// import { $createPetyoNode, PetyoNode } from "./PetyoNode";
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import ToolbarDemo from './Toolbar'
 import { fromMarkdown } from 'mdast-util-from-markdown'
@@ -39,29 +33,28 @@ import { mdxFromMarkdown, mdxToMarkdown } from 'mdast-util-mdx'
 import { visit } from 'unist-util-visit'
 import { TRANSFORMERS } from '@lexical/markdown'
 import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPlugin'
-import { HeadingNode, QuoteNode, $createQuoteNode, $isQuoteNode, $createHeadingNode, $isHeadingNode } from '@lexical/rich-text'
+import { $createHeadingNode, $createQuoteNode, $isHeadingNode, $isQuoteNode, HeadingNode, QuoteNode } from '@lexical/rich-text'
 import { CodeNode } from '@lexical/code'
-import { LinkNode, $createLinkNode, $isLinkNode } from '@lexical/link'
-import { ListNode, ListItemNode, $createListNode, $createListItemNode, $isListNode, $isListItemNode } from '@lexical/list'
+import { $createLinkNode, $isLinkNode, LinkNode } from '@lexical/link'
+import { $createListItemNode, $createListNode, $isListItemNode, $isListNode, ListItemNode, ListNode } from '@lexical/list'
 import {
-  ParentMdxNode,
-  RootMdxNode,
-  ParagraphMdxNode,
-  TextMdxNode,
-  UnderlineMdxNode,
-  StrongMdxNode,
-  EmphasisMdxNode,
   BlockquoteMdxNode,
+  EmphasisMdxNode,
   HeadingMdxNode,
-  ListMdxNode,
-  ListItemMdxNode,
   InlineCodeMdxNode,
   LinkMdxNode,
+  ListItemMdxNode,
+  ListMdxNode,
+  ParagraphMdxNode,
+  ParentMdxNode,
+  RootMdxNode,
+  StrongMdxNode,
+  TextMdxNode,
+  UnderlineMdxNode,
 } from './MdxNodes'
 import { ListPlugin } from '@lexical/react/LexicalListPlugin'
 import { toMarkdown } from 'mdast-util-to-markdown'
-import { IS_BOLD, IS_ITALIC, IS_UNDERLINE, IS_CODE } from './FormatConstants'
-import type { Parent as MdastParent } from 'mdast'
+import { IS_BOLD, IS_CODE, IS_ITALIC, IS_UNDERLINE } from './FormatConstants'
 import type { Node as UnistNode } from 'unist'
 import { LinkUIPlugin } from './LinkUIPlugin'
 
@@ -101,6 +94,7 @@ const loadContent = () => {
     mdastExtensions: [mdxFromMarkdown()],
   })
 
+  // eslint-disable-next-line no-console
   console.log(tree)
 
   const parentMap = new WeakMap<UnistNode, ElementNode | TextNode>()
