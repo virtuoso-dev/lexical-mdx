@@ -184,10 +184,8 @@ export function LinkUIPlugin() {
       editor.registerCommand(
         BLUR_COMMAND,
         () => {
-          if (!editMode) {
-            // setOpen(false)
-          }
-          // return false
+          // TODO: find a way to remove the popover when the editor blurs, but it also blurs when the popover opens. examine the event.
+          return false
         },
         COMMAND_PRIORITY_LOW
       ),
@@ -258,7 +256,7 @@ export function LinkUIPlugin() {
         />
       </Popover.Anchor>
       <Popover.Portal>
-        <Popover.Content className="PopoverContent" sideOffset={5} onOpenAutoFocus={(e) => e.preventDefault()}>
+        <Popover.Content className="PopoverContent" sideOffset={5} onOpenAutoFocus={(e) => e.preventDefault()} key={popoverKey}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 10 }}>
             {editMode ? (
               <input className="LinkUIInput Input" value={url || ''} ref={inputRef} onChange={(e) => setUrl(e.target.value)} autoFocus />
