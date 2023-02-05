@@ -6,8 +6,10 @@ import { CheckIcon, ClipboardCopyIcon, Cross2Icon, ExternalLinkIcon, LinkBreak1I
 import {
   $getSelection,
   $isRangeSelection,
+  COMMAND_PRIORITY_HIGH,
   COMMAND_PRIORITY_LOW,
   ElementNode,
+  KEY_MODIFIER_COMMAND,
   LexicalEditor,
   RangeSelection,
   SELECTION_CHANGE_COMMAND,
@@ -91,7 +93,11 @@ export function LinkUIPlugin() {
   const cancelChange = React.useCallback(() => {
     setEditMode(false)
     setUrl(initialUrl)
-  }, [initialUrl])
+    if (initialUrl === null) {
+      setOpen(false)
+      editor.focus()
+    }
+  }, [initialUrl, editor])
 
   const onKeyDown = React.useCallback(
     (e: KeyboardEvent) => {
@@ -179,6 +185,37 @@ export function LinkUIPlugin() {
           return true
         },
         COMMAND_PRIORITY_LOW
+      ),
+      editor.registerCommand(
+        KEY_MODIFIER_COMMAND,
+        (event) => {
+          // TODO: handle windows
+          if (event.key === 'k' && event.metaKey) {
+            const selection = $getSelection()
+            if ($isRangeSelection(selection)) {
+              const node = getSelectedNode(selection)
+              const parent = node.getParent()
+              if ($isLinkNode(parent)) {
+                setEditMode(true)
+              } else if ($isLinkNode(node)) {
+                setRect(getSelectionRectangle(editor))
+                setUrl(node.getURL())
+                setInitialUrl(node.getURL())
+                setEditMode(true)
+                setOpen(true)
+              } else {
+                setRect(getSelectionRectangle(editor))
+                setUrl('')
+                setInitialUrl(null)
+                setEditMode(true)
+                setOpen(true)
+              }
+            }
+            return true
+          }
+          return false
+        },
+        COMMAND_PRIORITY_HIGH
       )
     )
   }, [editor, updateLinkUI])
