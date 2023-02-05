@@ -1,5 +1,3 @@
-Make CMD+K activate the link creation dialog in ./components/LinkUIPlugin.tsx.
-
 - code block
     - lang
     - meta

@@ -6,6 +6,7 @@ import { CheckIcon, ClipboardCopyIcon, Cross2Icon, ExternalLinkIcon, LinkBreak1I
 import {
   $getSelection,
   $isRangeSelection,
+  BLUR_COMMAND,
   COMMAND_PRIORITY_HIGH,
   COMMAND_PRIORITY_LOW,
   ElementNode,
@@ -76,6 +77,7 @@ export function LinkUIPlugin() {
   const [initialUrl, setInitialUrl] = React.useState<string | null>(null)
   const [rect, setRect] = React.useState<DOMRect | null>(null)
   const [editMode, setEditMode] = React.useState(false)
+  const [popoverKey, setPopoverKey] = React.useState('0')
 
   const applyUrlChanges = React.useCallback(
     (input: HTMLInputElement) => {
@@ -133,11 +135,13 @@ export function LinkUIPlugin() {
       if ($isLinkNode(parent)) {
         setRect(getSelectionRectangle(editor))
         setUrl(parent.getURL())
+        setPopoverKey(parent.getKey())
         setInitialUrl(parent.getURL())
         setEditMode(false)
         setOpen(true)
       } else if ($isLinkNode(node)) {
         setRect(getSelectionRectangle(editor))
+        setPopoverKey(node.getKey())
         setUrl(node.getURL())
         setInitialUrl(node.getURL())
         setEditMode(false)
@@ -177,6 +181,16 @@ export function LinkUIPlugin() {
           updateLinkUI()
         })
       }),
+      editor.registerCommand(
+        BLUR_COMMAND,
+        () => {
+          if (!editMode) {
+            // setOpen(false)
+          }
+          // return false
+        },
+        COMMAND_PRIORITY_LOW
+      ),
 
       editor.registerCommand(
         SELECTION_CHANGE_COMMAND,
@@ -232,7 +246,9 @@ export function LinkUIPlugin() {
     <Popover.Root open={open && !!rect}>
       <Popover.Anchor asChild>
         <div
+          className="PopoverAnchor"
           style={{
+            visibility: open ? 'visible' : 'hidden',
             position: 'absolute',
             top: `${rect?.top}px`,
             left: `${rect?.left}px`,

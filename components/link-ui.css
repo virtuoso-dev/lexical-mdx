@@ -9,6 +9,14 @@ input {
   all: unset;
 }
 
+.PopoverAnchor {
+  background-color: Highlight;
+  z-index: -1;
+  border-radius: 4px;
+  padding: 1px;
+  transform: translateX(-1px);
+}
+
 .PopoverContent {
   border-radius: 4px;
   padding: 20px;
