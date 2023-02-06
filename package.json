@@ -47,10 +47,12 @@
     "@types/unist": "^2.0.6",
     "@typescript-eslint/eslint-plugin": "^5.50.0",
     "@typescript-eslint/parser": "^5.50.0",
+    "@vitejs/plugin-react": "^3.1.0",
     "eslint-config-prettier": "^8.6.0",
     "eslint-plugin-html": "^7.1.0",
     "eslint-plugin-json": "^3.1.0",
     "eslint-plugin-prettier": "^4.2.1",
+    "jsdom": "^21.1.0",
     "prettier": "^2.8.3",
     "vitest": "^0.28.3"
   }
