@@ -8,6 +8,7 @@ import {
   $createTextNode,
   $isTextNode,
   TextNode,
+  ParagraphNode,
 } from 'lexical'
 import type { Node as UnistNode, Parent as UnistParent } from 'unist'
 import * as Mdast from 'mdast'
@@ -17,6 +18,8 @@ import { mdxjs } from 'micromark-extension-mdxjs'
 import { fromMarkdown } from 'mdast-util-from-markdown'
 import { visit } from 'unist-util-visit'
 import { IS_BOLD, IS_CODE, IS_ITALIC, IS_UNDERLINE } from './FormatConstants'
+import { $createLinkNode, $isLinkNode, LinkNode } from '@lexical/link'
+import { $createHeadingNode, $isHeadingNode, HeadingNode } from '@lexical/rich-text'
 
 interface LexicalVisitActions<LN extends LexicalNode, N extends UnistNode, P extends UnistNode | null> {
   appendToParent<T extends UnistNode>(parentNode: P, node: T): T
@@ -53,7 +56,7 @@ const RootVisitor: MarkdownImportExportVisitor<LexicalRootNode, Mdast.Root, null
   },
 }
 
-const ParagraphVisitor: MarkdownImportExportVisitor<LexicalElementNode, Mdast.Paragraph, UnistParent> = {
+const ParagraphVisitor: MarkdownImportExportVisitor<ParagraphNode, Mdast.Paragraph, UnistParent> = {
   testLexicalNode: $isParagraphNode,
   visitLexicalNode: (lexicalNode, parentNode, actions) => {
     const paragraph = actions.appendToParent(parentNode, {
@@ -65,6 +68,42 @@ const ParagraphVisitor: MarkdownImportExportVisitor<LexicalElementNode, Mdast.Pa
   testUnistNode: 'paragraph',
   visitUnistNode: function (_, parentLexicalNode, actions): void {
     const lexicalNode = $createParagraphNode()
+    parentLexicalNode.append(lexicalNode)
+    actions.setCurrentUnistNodeAsParentTo(lexicalNode)
+  },
+}
+
+const LinkVisitor: MarkdownImportExportVisitor<LinkNode, Mdast.Link, UnistParent> = {
+  testLexicalNode: $isLinkNode,
+  visitLexicalNode: (lexicalNode, parentNode, actions) => {
+    const link = actions.appendToParent(parentNode, {
+      type: 'link' as const,
+      url: lexicalNode.getURL(),
+      children: [],
+    })
+    actions.traverseLexicalChildren(lexicalNode, link)
+  },
+  testUnistNode: 'link',
+  visitUnistNode: function (node, parentLexicalNode, actions): void {
+    const lexicalNode = $createLinkNode(node.url)
+    parentLexicalNode.append(lexicalNode)
+    actions.setCurrentUnistNodeAsParentTo(lexicalNode)
+  },
+}
+
+const HeadingVisitor: MarkdownImportExportVisitor<HeadingNode, Mdast.Heading, UnistParent> = {
+  testLexicalNode: $isHeadingNode,
+  visitLexicalNode: (lexicalNode, parentNode, actions) => {
+    const heading = actions.appendToParent(parentNode, {
+      type: 'heading' as const,
+      depth: parseInt(lexicalNode.getTag()[1], 10) as Mdast.Heading['depth'],
+      children: [],
+    })
+    actions.traverseLexicalChildren(lexicalNode, heading)
+  },
+  testUnistNode: 'heading',
+  visitUnistNode: function (node, parentLexicalNode, actions): void {
+    const lexicalNode = $createHeadingNode(`h${node.depth}`)
     parentLexicalNode.append(lexicalNode)
     actions.setCurrentUnistNodeAsParentTo(lexicalNode)
   },
@@ -171,7 +210,7 @@ const TextVisitor: MarkdownImportExportVisitor<TextNode, Mdast.Text, UnistParent
   },
 }
 
-export const VISITORS = [RootVisitor, ParagraphVisitor, TextVisitor, FormattingVisitor, InlineCodeVisitor]
+export const VISITORS = [RootVisitor, ParagraphVisitor, TextVisitor, FormattingVisitor, InlineCodeVisitor, LinkVisitor, HeadingVisitor]
 
 export type Visitors = Array<MarkdownImportExportVisitor<LexicalNode, UnistNode, UnistNode | null>>
 

@@ -130,13 +130,23 @@ describe('markdown import export', () => {
     it('supports inline code', () => {
       testIdenticalMarkdownAfterImportExport(testEnv.editor!, 'Hello `const` World')
     })
+
+    it('supports links', () => {
+      testIdenticalMarkdownAfterImportExport(testEnv.editor!, `[Virtuoso](https://virtuoso.dev/) World`)
+    })
+
+    it('supports headings', () => {
+      const md = `
+# Hello
+
+## World
+`
+      testIdenticalMarkdownAfterImportExport(testEnv.editor!, md)
+    })
   })
-  // inlineCode
-  // headings
   // lists
   // blockquotes
   // code blocks
   // horizontal rules
-  // links
   // images
 })
