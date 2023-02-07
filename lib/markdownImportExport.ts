@@ -94,6 +94,15 @@ const FormattingVisitor: MarkdownImportExportVisitor<
   },
 }
 
+const InlineCodeVisitor: MarkdownImportExportVisitor<LexicalElementNode, Mdast.InlineCode, UnistParent> = {
+  testUnistNode: 'inlineCode',
+  visitUnistNode: function (unistNode, parentLexicalNode, actions): void {
+    const lexicalNode = $createTextNode(unistNode.value)
+    lexicalNode.setFormat(IS_CODE)
+    parentLexicalNode.append(lexicalNode)
+  },
+}
+
 const TextVisitor: MarkdownImportExportVisitor<TextNode, Mdast.Text, UnistParent> = {
   testLexicalNode: $isTextNode,
   visitLexicalNode: (lexicalNode, parentNode, actions) => {
@@ -101,10 +110,13 @@ const TextVisitor: MarkdownImportExportVisitor<TextNode, Mdast.Text, UnistParent
     const prevFormat = previousSibling?.getFormat?.() ?? 0
     const format = lexicalNode.getFormat() ?? 0
 
-    // if (format & IS_CODE) {
-    //   parentMdxNode.append(new InlineCodeMdxNode(lexicalChild.getTextContent()))
-    //   return
-    // }
+    if (format & IS_CODE) {
+      actions.appendToParent(parentNode, {
+        type: 'inlineCode' as const,
+        value: lexicalNode.getTextContent(),
+      })
+      return
+    }
 
     let localParentNode = parentNode
 
@@ -159,7 +171,8 @@ const TextVisitor: MarkdownImportExportVisitor<TextNode, Mdast.Text, UnistParent
   },
 }
 
-export const VISITORS = [RootVisitor, ParagraphVisitor, TextVisitor, FormattingVisitor]
+export const VISITORS = [RootVisitor, ParagraphVisitor, TextVisitor, FormattingVisitor, InlineCodeVisitor]
+
 export type Visitors = Array<MarkdownImportExportVisitor<LexicalNode, UnistNode, UnistNode | null>>
 
 function isParent(node: UnistNode): node is UnistParent {

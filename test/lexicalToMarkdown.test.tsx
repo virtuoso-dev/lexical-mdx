@@ -17,7 +17,7 @@ import {
 import { traverseLexicalTree, importMarkdownToLexical, VISITORS, exportMarkdownFromLexical } from '../lib/markdownImportExport'
 ;(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true
 
-describe('loading markdown into lexical', () => {
+describe('importing markdown into lexical', () => {
   initializeUnitTest((testEnv) => {
     it('works with an empty string', () => {
       const { editor } = testEnv
@@ -125,6 +125,10 @@ describe('markdown import export', () => {
 **Hello *world* <u>some</u> more**
 `
       testIdenticalMarkdownAfterImportExport(testEnv.editor!, md)
+    })
+
+    it('supports inline code', () => {
+      testIdenticalMarkdownAfterImportExport(testEnv.editor!, 'Hello `const` World')
     })
   })
   // inlineCode
