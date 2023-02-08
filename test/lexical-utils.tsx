@@ -27,11 +27,13 @@ import { CodeHighlightNode, CodeNode } from '@lexical/code'
 import { AutoLinkNode, LinkNode } from '@lexical/link'
 import { ListItemNode, ListNode } from '@lexical/list'
 import { HeadingNode, QuoteNode } from '@lexical/rich-text'
+import { HorizontalRuleNode } from '@lexical/react/LexicalHorizontalRuleNode'
 import { $isRangeSelection, createEditor, DecoratorNode, ElementNode, TextNode } from 'lexical'
 import * as React from 'react'
 import { createRef } from 'react'
 import { createRoot } from 'react-dom/client'
 import * as ReactTestUtils from 'react-dom/test-utils'
+import { ImageNode } from '../lib/ImageNode'
 
 let keyCounter = 1
 
@@ -398,6 +400,8 @@ const DEFAULT_NODES = [
   TestDecoratorNode,
   TestInlineElementNode,
   TestTextNode,
+  HorizontalRuleNode,
+  ImageNode,
 ]
 
 export function createTestEditor(

@@ -21,7 +21,7 @@ import {
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { $findMatchingParent } from '@lexical/utils'
 import { $isParentElementRTL } from '@lexical/selection'
-import { DEFAULT_FORMAT, IS_BOLD, IS_ITALIC, IS_UNDERLINE, IS_STRIKETHROUGH } from './FormatConstants'
+import { DEFAULT_FORMAT, IS_BOLD, IS_ITALIC, IS_UNDERLINE, IS_STRIKETHROUGH } from '../lib/FormatConstants'
 
 const FormatMap = new Map<number, TextFormatType>([
   [IS_BOLD, 'bold'],

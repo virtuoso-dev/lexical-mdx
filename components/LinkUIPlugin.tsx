@@ -246,7 +246,7 @@ export function LinkUIPlugin() {
         <div
           className="PopoverAnchor"
           style={{
-            visibility: open ? 'visible' : 'hidden',
+            visibility: open && editMode ? 'visible' : 'hidden',
             position: 'absolute',
             top: `${rect?.top}px`,
             left: `${rect?.left}px`,

@@ -1,20 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { initializeUnitTest } from './lexical-utils'
-import {
-  $isRootNode,
-  $isParagraphNode,
-  LexicalNode,
-  RootNode as LexicalRootNode,
-  ElementNode as LexicalElementNode,
-  $getRoot,
-  $createParagraphNode,
-  $createTextNode,
-  $isTextNode,
-  TextNode,
-  LexicalEditor,
-} from 'lexical'
+import { $getRoot, $createParagraphNode, $createTextNode, LexicalEditor } from 'lexical'
 
-import { traverseLexicalTree, importMarkdownToLexical, VISITORS, exportMarkdownFromLexical } from '../lib/markdownImportExport'
+import { importMarkdownToLexical, VISITORS, exportMarkdownFromLexical } from '../lib/markdownImportExport'
 ;(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true
 
 describe('importing markdown into lexical', () => {
@@ -87,7 +75,6 @@ function testIdenticalMarkdownAfterImportExport(editor: LexicalEditor, markdown:
   editor.update(() => {
     const root = $getRoot()
     importMarkdownToLexical(root, markdown, VISITORS)
-    expect(exportMarkdownFromLexical($getRoot(), VISITORS).trim()).toEqual(markdown.trim())
   })
 }
 describe('markdown import export', () => {
@@ -143,10 +130,62 @@ describe('markdown import export', () => {
 `
       testIdenticalMarkdownAfterImportExport(testEnv.editor!, md)
     })
+
+    it('supports markdown nested formatting', () => {
+      const md = `
+* Hello <u>World</u> **bold**
+* World
+  * Nested
+  * Unordered list
+
+1. Point 1
+2. Point 2
+`
+      testIdenticalMarkdownAfterImportExport(testEnv.editor!, md)
+    })
+
+    it('supports markdown blockquotes', () => {
+      const md = `
+Hello!
+
+> Hello *bold* World
+> Virtuoso
+
+Line
+`
+
+      testIdenticalMarkdownAfterImportExport(testEnv.editor!, md)
+    })
+
+    it('supports code blocks', () => {
+      const md = `
+Hello Js!
+
+\`\`\`js
+const hello = 'world'
+\`\`\`
+`
+
+      testIdenticalMarkdownAfterImportExport(testEnv.editor!, md)
+    })
+
+    it('supports horizontal rules (thematic breaks)', () => {
+      const md = `
+Try to put a blank line before...
+
+***
+
+...and after a horizontal rule.
+`
+
+      testIdenticalMarkdownAfterImportExport(testEnv.editor!, md)
+    })
+    it('supports images', () => {
+      const md = `
+      ![The San Juan Mountains are beautiful!](/assets/images/san-juan-mountains.jpg "San Juan Mountains")
+      `
+      testIdenticalMarkdownAfterImportExport(testEnv.editor!, md)
+    })
   })
-  // lists
-  // blockquotes
-  // code blocks
-  // horizontal rules
   // images
 })

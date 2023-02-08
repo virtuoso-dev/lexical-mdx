@@ -19,7 +19,11 @@ import { fromMarkdown } from 'mdast-util-from-markdown'
 import { visit } from 'unist-util-visit'
 import { IS_BOLD, IS_CODE, IS_ITALIC, IS_UNDERLINE } from './FormatConstants'
 import { $createLinkNode, $isLinkNode, LinkNode } from '@lexical/link'
-import { $createHeadingNode, $isHeadingNode, HeadingNode } from '@lexical/rich-text'
+import { $createHeadingNode, $createQuoteNode, $isHeadingNode, $isQuoteNode, HeadingNode, QuoteNode } from '@lexical/rich-text'
+import { $createListItemNode, $createListNode, $isListItemNode, $isListNode, ListItemNode, ListNode } from '@lexical/list'
+import { $createCodeNode, $isCodeNode, CodeNode } from '@lexical/code'
+import { HorizontalRuleNode, $createHorizontalRuleNode, $isHorizontalRuleNode } from '@lexical/react/LexicalHorizontalRuleNode'
+import { $createImageNode, $isImageNode, ImageNode } from './ImageNode'
 
 interface LexicalVisitActions<LN extends LexicalNode, N extends UnistNode, P extends UnistNode | null> {
   appendToParent<T extends UnistNode>(parentNode: P, node: T): T
@@ -33,15 +37,22 @@ interface UnistVisitActions {
 }
 
 interface MarkdownImportExportVisitor<LN extends LexicalNode, UN extends UnistNode, ParentNode extends UnistNode | null> {
+  testUnistNode: ((unistNode: UnistNode) => boolean) | string
   testLexicalNode?(lexicalNode: LexicalNode): lexicalNode is LN
+
+  visitUnistNode(unistNode: UN, parentLexicalNode: LexicalNode, actions: UnistVisitActions): void
   visitLexicalNode?(lexicalNode: LN, parentNode: ParentNode, actions: LexicalVisitActions<LN, UN, ParentNode>): void
+
   shouldJoin?(prevNode: UnistNode, currentNode: UN): boolean
   join?(prevNode: UN, currentNode: UN): UN
-  testUnistNode: ((unistNode: UnistNode) => boolean) | string
-  visitUnistNode(unistNode: UN, parentLexicalNode: LexicalNode, actions: UnistVisitActions): void
 }
 
 const RootVisitor: MarkdownImportExportVisitor<LexicalRootNode, Mdast.Root, null> = {
+  testUnistNode: 'root',
+  visitUnistNode(_, parentLexicalNode, actions) {
+    actions.setCurrentUnistNodeAsParentTo(parentLexicalNode)
+  },
+
   testLexicalNode: $isRootNode,
   visitLexicalNode: (lexicalNode, _, actions) => {
     const root = actions.appendToParent(null, {
@@ -50,13 +61,21 @@ const RootVisitor: MarkdownImportExportVisitor<LexicalRootNode, Mdast.Root, null
     })
     actions.traverseLexicalChildren(lexicalNode, root)
   },
-  testUnistNode: 'root',
-  visitUnistNode(_, parentLexicalNode, actions) {
-    actions.setCurrentUnistNodeAsParentTo(parentLexicalNode)
-  },
 }
 
 const ParagraphVisitor: MarkdownImportExportVisitor<ParagraphNode, Mdast.Paragraph, UnistParent> = {
+  testUnistNode: 'paragraph',
+  visitUnistNode: function (_, parentLexicalNode, actions): void {
+    // markdown inserts paragraphs in lists. lexical does not.
+    if ($isListItemNode(parentLexicalNode) || $isQuoteNode(parentLexicalNode)) {
+      actions.setCurrentUnistNodeAsParentTo(parentLexicalNode)
+    } else {
+      const lexicalNode = $createParagraphNode()
+      parentLexicalNode.append(lexicalNode)
+      actions.setCurrentUnistNodeAsParentTo(lexicalNode)
+    }
+  },
+
   testLexicalNode: $isParagraphNode,
   visitLexicalNode: (lexicalNode, parentNode, actions) => {
     const paragraph = actions.appendToParent(parentNode, {
@@ -65,15 +84,16 @@ const ParagraphVisitor: MarkdownImportExportVisitor<ParagraphNode, Mdast.Paragra
     })
     actions.traverseLexicalChildren(lexicalNode, paragraph)
   },
-  testUnistNode: 'paragraph',
-  visitUnistNode: function (_, parentLexicalNode, actions): void {
-    const lexicalNode = $createParagraphNode()
-    parentLexicalNode.append(lexicalNode)
-    actions.setCurrentUnistNodeAsParentTo(lexicalNode)
-  },
 }
 
 const LinkVisitor: MarkdownImportExportVisitor<LinkNode, Mdast.Link, UnistParent> = {
+  testUnistNode: 'link',
+  visitUnistNode: function (node, parentLexicalNode, actions): void {
+    const lexicalNode = $createLinkNode(node.url)
+    parentLexicalNode.append(lexicalNode)
+    actions.setCurrentUnistNodeAsParentTo(lexicalNode)
+  },
+
   testLexicalNode: $isLinkNode,
   visitLexicalNode: (lexicalNode, parentNode, actions) => {
     const link = actions.appendToParent(parentNode, {
@@ -83,15 +103,16 @@ const LinkVisitor: MarkdownImportExportVisitor<LinkNode, Mdast.Link, UnistParent
     })
     actions.traverseLexicalChildren(lexicalNode, link)
   },
-  testUnistNode: 'link',
-  visitUnistNode: function (node, parentLexicalNode, actions): void {
-    const lexicalNode = $createLinkNode(node.url)
-    parentLexicalNode.append(lexicalNode)
-    actions.setCurrentUnistNodeAsParentTo(lexicalNode)
-  },
 }
 
 const HeadingVisitor: MarkdownImportExportVisitor<HeadingNode, Mdast.Heading, UnistParent> = {
+  testUnistNode: 'heading',
+  visitUnistNode: function (node, parentLexicalNode, actions): void {
+    const lexicalNode = $createHeadingNode(`h${node.depth}`)
+    parentLexicalNode.append(lexicalNode)
+    actions.setCurrentUnistNodeAsParentTo(lexicalNode)
+  },
+
   testLexicalNode: $isHeadingNode,
   visitLexicalNode: (lexicalNode, parentNode, actions) => {
     const heading = actions.appendToParent(parentNode, {
@@ -101,11 +122,80 @@ const HeadingVisitor: MarkdownImportExportVisitor<HeadingNode, Mdast.Heading, Un
     })
     actions.traverseLexicalChildren(lexicalNode, heading)
   },
-  testUnistNode: 'heading',
+}
+
+const ListVisitor: MarkdownImportExportVisitor<ListNode, Mdast.List, UnistParent> = {
+  testUnistNode: 'list',
   visitUnistNode: function (node, parentLexicalNode, actions): void {
-    const lexicalNode = $createHeadingNode(`h${node.depth}`)
+    const lexicalNode = $createListNode(node.ordered ? 'number' : 'bullet')
+
+    if ($isListItemNode(parentLexicalNode)) {
+      const dedicatedParent = $createListItemNode()
+      dedicatedParent.append(lexicalNode)
+      parentLexicalNode.insertAfter(dedicatedParent)
+    } else {
+      parentLexicalNode.append(lexicalNode)
+    }
+    actions.setCurrentUnistNodeAsParentTo(lexicalNode)
+  },
+
+  testLexicalNode: $isListNode,
+  visitLexicalNode: (lexicalNode, parentNode, actions) => {
+    const list = actions.appendToParent(parentNode, {
+      type: 'list' as const,
+      ordered: lexicalNode.getListType() === 'number',
+      //TODO: figure out when spread can be true
+      spread: false,
+      children: [],
+    })
+    actions.traverseLexicalChildren(lexicalNode, list)
+  },
+}
+
+// use Parent interface since we construct a list item to a paragraph :)
+const ListItemVisitor: MarkdownImportExportVisitor<ListItemNode, Mdast.Parent, UnistParent> = {
+  testUnistNode: 'listItem',
+  visitUnistNode: function (node, parentLexicalNode, actions): void {
+    const lexicalNode = $createListItemNode()
     parentLexicalNode.append(lexicalNode)
     actions.setCurrentUnistNodeAsParentTo(lexicalNode)
+  },
+
+  testLexicalNode: $isListItemNode,
+  visitLexicalNode: (lexicalNode, parentNode, actions) => {
+    const children = lexicalNode.getChildren()
+    const firstChild = children[0]
+
+    if (children.length === 1 && $isListNode(firstChild)) {
+      // append the list ater the paragraph of the previous list item
+      const prevListItemNode = parentNode.children.at(-1) as Mdast.ListItem
+      actions.traverseLexicalChildren(lexicalNode, prevListItemNode)
+    } else {
+      const listItem = actions.appendToParent(parentNode, {
+        type: 'listItem' as const,
+        spread: false,
+        children: [{ type: 'paragraph' as const, children: [] }],
+      })
+      actions.traverseLexicalChildren(lexicalNode, listItem.children[0])
+    }
+  },
+}
+
+const BlockQuoteVisitor: MarkdownImportExportVisitor<QuoteNode, Mdast.Parent, UnistParent> = {
+  testUnistNode: 'blockquote',
+  visitUnistNode: (node, parentLexicalNode, actions) => {
+    const lexicalNode = $createQuoteNode()
+    parentLexicalNode.append(lexicalNode)
+    actions.setCurrentUnistNodeAsParentTo(lexicalNode)
+  },
+
+  testLexicalNode: $isQuoteNode,
+  visitLexicalNode: (lexicalNode, parentNode, actions) => {
+    const blockquote = actions.appendToParent(parentNode, {
+      type: 'blockquote' as const,
+      children: [{ type: 'paragraph' as const, children: [] }],
+    })
+    actions.traverseLexicalChildren(lexicalNode, blockquote.children[0])
   },
 }
 
@@ -139,6 +229,23 @@ const InlineCodeVisitor: MarkdownImportExportVisitor<LexicalElementNode, Mdast.I
     const lexicalNode = $createTextNode(unistNode.value)
     lexicalNode.setFormat(IS_CODE)
     parentLexicalNode.append(lexicalNode)
+  },
+}
+
+const CodeVisitor: MarkdownImportExportVisitor<CodeNode, Mdast.Code, UnistParent> = {
+  testUnistNode: 'code',
+  visitUnistNode: function (unistNode, parentLexicalNode, actions): void {
+    const lexicalNode = $createCodeNode(unistNode.lang)
+    lexicalNode.append($createTextNode(unistNode.value))
+    parentLexicalNode.append(lexicalNode)
+  },
+  testLexicalNode: $isCodeNode,
+  visitLexicalNode: (lexicalNode, parentNode, actions) => {
+    actions.appendToParent(parentNode, {
+      type: 'code' as const,
+      lang: lexicalNode.getLanguage(),
+      value: lexicalNode.getTextContent(),
+    })
   },
 }
 
@@ -210,7 +317,51 @@ const TextVisitor: MarkdownImportExportVisitor<TextNode, Mdast.Text, UnistParent
   },
 }
 
-export const VISITORS = [RootVisitor, ParagraphVisitor, TextVisitor, FormattingVisitor, InlineCodeVisitor, LinkVisitor, HeadingVisitor]
+const ThematicBreakVisitor: MarkdownImportExportVisitor<HorizontalRuleNode, Mdast.ThematicBreak, UnistParent> = {
+  testUnistNode: 'thematicBreak',
+  visitUnistNode: (unistNode, parentLexicalNode, actions) => {
+    parentLexicalNode.append($createHorizontalRuleNode())
+  },
+
+  testLexicalNode: $isHorizontalRuleNode,
+  visitLexicalNode: (lexicalNode, parentNode, actions) => {
+    actions.appendToParent(parentNode, {
+      type: 'thematicBreak',
+    })
+  },
+}
+
+const ImageVisitor: MarkdownImportExportVisitor<ImageNode, Mdast.Image, UnistParent> = {
+  testUnistNode: 'image',
+  visitUnistNode: (unistNode, parentLexicalNode, actions) => {
+    parentLexicalNode.append($createImageNode({ src: unistNode.url, altText: unistNode.alt || '', title: unistNode.title || '' }))
+  },
+  testLexicalNode: $isImageNode,
+  visitLexicalNode: (lexicalNode, parentNode, actions) => {
+    actions.appendToParent(parentNode, {
+      type: 'image',
+      url: lexicalNode.getSrc(),
+      alt: lexicalNode.getAltText(),
+      title: lexicalNode.getTitle(),
+    })
+  },
+}
+
+export const VISITORS = [
+  RootVisitor,
+  ParagraphVisitor,
+  TextVisitor,
+  FormattingVisitor,
+  InlineCodeVisitor,
+  LinkVisitor,
+  HeadingVisitor,
+  ListVisitor,
+  ListItemVisitor,
+  BlockQuoteVisitor,
+  CodeVisitor,
+  ThematicBreakVisitor,
+  ImageVisitor,
+]
 
 export type Visitors = Array<MarkdownImportExportVisitor<LexicalNode, UnistNode, UnistNode | null>>
 
@@ -272,7 +423,7 @@ export function traverseLexicalTree(root: LexicalRootNode, visitors: Visitors): 
   return unistRoot
 }
 
-export function importMarkdownToLexical(root: LexicalRootNode, markdown: string, visitors: Visitors): void {
+export function importMarkdownToLexical(root: LexicalRootNode, markdown: string, visitors: Visitors = VISITORS): void {
   const parentMap = new WeakMap<UnistNode, LexicalNode>()
   const formattingMap = new WeakMap<UnistNode, number>()
 
@@ -314,6 +465,6 @@ export function generateMarkdownFromAst(node: Mdast.Root): string {
   })
 }
 
-export function exportMarkdownFromLexical(root: LexicalRootNode, visitors: Visitors): string {
+export function exportMarkdownFromLexical(root: LexicalRootNode, visitors: Visitors = VISITORS): string {
   return generateMarkdownFromAst(traverseLexicalTree(root, visitors))
 }
