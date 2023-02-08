@@ -1,8 +1,16 @@
-- code block
-    - lang
-    - meta
+Create MdastVisitor
+Create LexicalMarkdownImportVisitor < MdastVisitor
+
+Create LexicalVisitor
+Create LexicalMarkdownExportVisitor < LexicalVisitor
+
+actions.appendToParent
+actions.traverseChildren
+
+
 
 Icebox
+- code block meta
 - link titles
 - limit link urls with elipsis, add open button
 - sanitize url ( get from lexical, or some standard one)
