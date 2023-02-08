@@ -24,7 +24,6 @@ specifiers:
   '@typescript-eslint/eslint-plugin': ^5.50.0
   '@typescript-eslint/parser': ^5.50.0
   '@vitejs/plugin-react': ^3.1.0
-  LexicalHorizontalRuleNode: link:@lexical/react/LexicalHorizontalRuleNode
   eslint: 8.31.0
   eslint-config-next: 13.1.1
   eslint-config-prettier: ^8.6.0
@@ -64,7 +63,6 @@ dependencies:
   '@types/node': 18.11.18
   '@types/react': 18.0.26
   '@types/react-dom': 18.0.10
-  LexicalHorizontalRuleNode: link:@lexical/react/LexicalHorizontalRuleNode
   eslint: 8.31.0
   eslint-config-next: 13.1.1_iukboom6ndih5an6iafl45j2fe
   lexical: 0.7.6
